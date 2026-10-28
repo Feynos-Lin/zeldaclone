@@ -356,6 +356,7 @@ func do_hit() -> void:
 		landed = true
 	if landed:
 		main.hitstop(0.05)
+		main.controls.rumble(0.35, 0.2 if not spin else 0.5, 0.1)
 
 
 func take_damage(amount: int, push_dir: Vector3) -> void:
@@ -369,6 +370,7 @@ func take_damage(amount: int, push_dir: Vector3) -> void:
 	knock.y = 0
 	main.sfx.play("hurt")
 	main.cam_rig.shake(0.25)
+	main.controls.rumble(0.5, 0.8 if hp - amount <= 0 else 0.55, 0.3)
 	rest_pose()
 	parts.pivot.rotation.x = 0.0
 	parts.pivot.position.y = 0.85

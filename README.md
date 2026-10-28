@@ -14,14 +14,22 @@ Every push to `main` builds a new release (see the Releases page):
 
 ## Controls
 
-| | Keyboard / mouse | Gamepad | Touch |
+| | Keyboard / mouse | Controller (Xbox names) | Touch |
 |---|---|---|---|
-| Move | WASD | Left stick | Left-side stick |
+| Move | WASD | Left stick or D-pad | Left-side stick |
 | Sword (hold, then release to spin) | J / left click | X or B | B |
 | Roll / talk / advance text | Space | A | A |
-| Lock on / recenter camera | Tab / right click | LT or LB | Z |
-| Turn camera | Q / E or arrow keys | Right stick | Drag on the right side |
+| Lock on | Tab / right click | LT or LB | Z |
+| Turn / tilt camera | Q / E, R / F | Right stick | Drag on the right side |
+| Recenter camera | C | Y or click right stick | |
+| Pause menu | Esc / P | Start or Back | |
 | Fullscreen | F11 | | |
+
+### Controllers
+
+Xbox-style (XInput) pads, PlayStation, Nintendo, and the DInput pads in Godot's built-in controller database work as soon as they're plugged in or paired, on Fedora and Android. Pads with an X/D mode switch work in either mode. On-screen prompts use your controller's own button names, and it rumbles when you're hit or land a strike.
+
+If a controller isn't recognized or its buttons come out wrong, open the pause menu and choose **Controller setup**, then press each button as asked (anything you don't press within 8 seconds is skipped). The mapping is saved for that controller model. **Reset controller mapping** returns it to the default layout.
 
 ## What's in the prototype
 

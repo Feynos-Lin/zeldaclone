@@ -62,6 +62,12 @@ func _physics_process(delta: float) -> void:
 		yaw -= turn * 2.4 * delta
 		manual_cooldown = 1.5
 		recentering = false
+	var tilt := Input.get_axis("cam_up", "cam_down")
+	if absf(tilt) > 0.05:
+		pitch = clampf(pitch - tilt * 1.2 * delta, -0.85, 0.05)
+	if Input.is_action_just_pressed("recenter"):
+		recenter(player.facing)
+		pitch = -0.3
 	manual_cooldown = maxf(manual_cooldown - delta, 0.0)
 
 	var tgt = player.target

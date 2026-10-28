@@ -42,8 +42,11 @@ func _ready() -> void:
 	over_title.visible = false
 	over_sub.visible = false
 	hint = make_label(self, 8, HORIZONTAL_ALIGNMENT_CENTER)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	hint.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
 	toast_label = make_label(self, 10, HORIZONTAL_ALIGNMENT_CENTER)
+	toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	toast_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.6))
 
 	dialog_panel = Panel.new()
@@ -82,7 +85,7 @@ func set_hint(text: String) -> void:
 
 func toast(text: String) -> void:
 	toast_label.text = text
-	toast_time = 2.5
+	toast_time = 2.5 + text.length() * 0.03
 
 
 func show_dialog(speaker: String, text: String) -> void:
@@ -108,10 +111,10 @@ func finish_typing() -> void:
 	text_label.visible_characters = -1
 
 
-func show_game_over(on: bool, touch: bool) -> void:
+func show_game_over(on: bool, button: String, touch: bool) -> void:
 	over_title.visible = on
 	over_sub.visible = on
-	over_sub.text = "Tap A to rise again" if touch else "Press Space / A to rise again"
+	over_sub.text = ("Tap %s to rise again" if touch else "Press %s to rise again") % button
 
 
 func _process(delta: float) -> void:
@@ -144,13 +147,13 @@ func _process(delta: float) -> void:
 	over_sub.size = Vector2(w, 14)
 
 	hint_time = maxf(hint_time - delta, 0.0)
-	hint.position = Vector2(0, h - 34)
-	hint.size = Vector2(w, 12)
+	hint.position = Vector2(16, h - 50)
+	hint.size = Vector2(w - 32, 26)
 	hint.modulate.a = clampf(hint_time, 0.0, 1.0) * (0.0 if dialog_panel.visible else 1.0)
 
 	toast_time = maxf(toast_time - delta, 0.0)
-	toast_label.position = Vector2(0, h * 0.62)
-	toast_label.size = Vector2(w, 14)
+	toast_label.position = Vector2(20, h * 0.6)
+	toast_label.size = Vector2(w - 40, 30)
 	toast_label.modulate.a = clampf(toast_time, 0.0, 1.0)
 
 	var pw := minf(w - 40.0, 330.0)

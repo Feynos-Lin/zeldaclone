@@ -12,6 +12,8 @@ const HudScript = preload("res://scripts/hud.gd")
 const TouchScript = preload("res://scripts/touch_controls.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
 const WorldScript = preload("res://scripts/world.gd")
+const ControlsScript = preload("res://scripts/controls.gd")
+const PauseScript = preload("res://scripts/pause_menu.gd")
 
 const HOURS_PER_SEC := 1.0 / 20.0      # one in-game hour every 20 seconds
 const SPAWN_POINT := Vector3(8, 0, 113)
@@ -32,6 +34,8 @@ const SKY_KEYS := [
 
 var ward_radius := 27.0
 var world_builder
+var controls
+var pause_menu
 var world: Node3D
 var player
 var cam_rig
@@ -61,7 +65,8 @@ var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	rng.seed = 1987
-	setup_input()
+	controls = ControlsScript.new()
+	add_child(controls)
 	sfx = SfxScript.new()
 	add_child(sfx)
 	world = Node3D.new()
@@ -105,10 +110,14 @@ func _ready() -> void:
 	touch.theme = theme
 	ui.add_child(touch)
 	touch.resized.connect(touch.queue_redraw)
-	if touch.visible:
-		hud.set_hint("Stick: move · B: sword (hold to spin) · A: roll / talk · Z: lock on · drag right side: camera")
-	else:
-		hud.set_hint("WASD move · J / click: sword (hold to spin) · Space: roll / talk · Tab: lock on · Q/E: camera · F11: fullscreen")
+	pause_menu = PauseScript.new()
+	pause_menu.main = self
+	pause_menu.controls = controls
+	pause_menu.theme = theme
+	ui.add_child(pause_menu)
+	hud.set_hint(controls.hint_text())
+	controls.device_changed.connect(func(_kind): hud.set_hint(controls.hint_text()))
+	controls.message.connect(func(text): hud.toast(text))
 
 	# A few of the dead are already loose in the field.
 	for p in [Vector3(-12, 0, 46), Vector3(8, 0, 62), Vector3(-2, 0, 84), Vector3(18, 0, 92)]:
@@ -117,53 +126,6 @@ func _ready() -> void:
 
 
 # ---------------------------------------------------------------- input
-
-func setup_input() -> void:
-	add_action("move_left", [key(KEY_A), joy_axis(JOY_AXIS_LEFT_X, -1.0)])
-	add_action("move_right", [key(KEY_D), joy_axis(JOY_AXIS_LEFT_X, 1.0)])
-	add_action("move_forward", [key(KEY_W), key(KEY_UP), joy_axis(JOY_AXIS_LEFT_Y, -1.0)])
-	add_action("move_back", [key(KEY_S), key(KEY_DOWN), joy_axis(JOY_AXIS_LEFT_Y, 1.0)])
-	add_action("cam_left", [key(KEY_Q), key(KEY_LEFT), joy_axis(JOY_AXIS_RIGHT_X, -1.0)])
-	add_action("cam_right", [key(KEY_E), key(KEY_RIGHT), joy_axis(JOY_AXIS_RIGHT_X, 1.0)])
-	add_action("attack", [key(KEY_J), mouse_btn(MOUSE_BUTTON_LEFT), joy_btn(JOY_BUTTON_X), joy_btn(JOY_BUTTON_B)])
-	add_action("action", [key(KEY_SPACE), key(KEY_K), key(KEY_ENTER), joy_btn(JOY_BUTTON_A)])
-	add_action("target", [key(KEY_TAB), key(KEY_L), mouse_btn(MOUSE_BUTTON_RIGHT), joy_axis(JOY_AXIS_TRIGGER_LEFT, 1.0), joy_btn(JOY_BUTTON_LEFT_SHOULDER)])
-	add_action("fullscreen", [key(KEY_F11)])
-
-
-func add_action(action: String, events: Array) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action, 0.25)
-	for e in events:
-		InputMap.action_add_event(action, e)
-
-
-func key(k: Key) -> InputEventKey:
-	var e := InputEventKey.new()
-	e.physical_keycode = k
-	return e
-
-
-func joy_btn(b: JoyButton) -> InputEventJoypadButton:
-	var e := InputEventJoypadButton.new()
-	e.button_index = b
-	e.device = -1
-	return e
-
-
-func joy_axis(a: JoyAxis, v: float) -> InputEventJoypadMotion:
-	var e := InputEventJoypadMotion.new()
-	e.axis = a
-	e.axis_value = v
-	e.device = -1
-	return e
-
-
-func mouse_btn(b: MouseButton) -> InputEventMouseButton:
-	var e := InputEventMouseButton.new()
-	e.button_index = b
-	return e
-
 
 # ---------------------------------------------------------------- world building
 
@@ -383,12 +345,12 @@ func on_player_died() -> void:
 	await get_tree().create_timer(1.6, true, false, true).timeout
 	game_over_active = true
 	game_over_frame = Engine.get_process_frames()
-	hud.show_game_over(true, touch.visible)
+	hud.show_game_over(true, controls.confirm_name(), controls.last_device == "touch")
 
 
 func respawn() -> void:
 	game_over_active = false
-	hud.show_game_over(false, touch.visible)
+	hud.show_game_over(false, controls.confirm_name(), controls.last_device == "touch")
 	for z in get_tree().get_nodes_in_group("zombies"):
 		if Vector2(z.global_position.x, z.global_position.z).length() < 45.0:
 			z.queue_free()
