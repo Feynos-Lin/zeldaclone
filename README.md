@@ -2,7 +2,7 @@
 
 An N64-style action adventure prototype built with Godot 4.4. It runs natively on Android and on Fedora/Linux.
 
-You start in the walled town of Wrenmoor at dusk. Past the gate and the glowing ward-stones lies the Hollow Field, and at its far end, Hollow Cave, where the dead keep crawling out. More of them come at night.
+You start in Wrenmoor, a village in a forest clearing, at dusk. Past the glowing ward-stones a trail winds through the woods to Hollow Cave, where the dead keep crawling out. More of them come at night.
 
 ## Install
 
@@ -33,8 +33,8 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 
 ## What's in the prototype
 
-- Town with villagers to talk to, a gate, ward-stones the dead can't cross
-- Open field with trees, rocks and graves; cave that spawns zombies
+- Forest village with no walls: thatched cottages, villagers to talk to, and a ring of ward-stones the dead can't cross
+- A winding trail through the woods to a graveyard and Hollow Cave, which spawns zombies
 - 3-hit sword combo, charged spin attack, dodge roll with invincibility, lock-on with letterbox bars
 - Hearts, bone shards and heart drops, death and respawn
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises
