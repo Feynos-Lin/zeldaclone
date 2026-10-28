@@ -76,13 +76,13 @@ func _ready() -> void:
 	model = Node3D.new()
 	add_child(model)
 	parts = B.humanoid(model, {
-		"skin": Color(0.95, 0.74, 0.58),
-		"shirt": Color(0.52, 0.32, 0.19),
-		"arm": Color(0.52, 0.32, 0.19),
-		"forearm": Color(0.5, 0.31, 0.18),
-		"hand": Color(0.95, 0.74, 0.58),
-		"pants": Color(0.56, 0.53, 0.48),
-		"hair": Color(0.47, 0.29, 0.14),
+		"skin": Color(0.9, 0.68, 0.53),
+		"shirt": Color(0.46, 0.3, 0.19),
+		"arm": Color(0.46, 0.3, 0.19),
+		"forearm": Color(0.44, 0.29, 0.18),
+		"hand": Color(0.9, 0.68, 0.53),
+		"pants": Color(0.46, 0.45, 0.4),
+		"hair": Color(0.37, 0.23, 0.12),
 		"boots": Color(0.44, 0.29, 0.17),
 		"eye_color": Color(0.16, 0.15, 0.18),
 		"hair_style": "spiky",
@@ -97,11 +97,11 @@ func _ready() -> void:
 		"leg": 0.74,
 		"limb": 1.22,
 		"arm_len": 0.86,
-		"hand_scale": 1.35,
+		"hand_scale": 1.2,
 	})
 	model.scale = Vector3.ONE * 0.95
 	var body: Node3D = parts.body
-	var tunic := B.paint_mat(Color(0.52, 0.32, 0.19), "cloth", 21)
+	var tunic := B.paint_mat(Color(0.46, 0.3, 0.19), "cloth", 21)
 	var rope := B.paint_mat(Color(0.72, 0.6, 0.4), "rope")
 	var leather := B.paint_mat(Color(0.36, 0.22, 0.12), "leather")
 	# Tunic hem flaring over the hips
@@ -118,6 +118,7 @@ func _ready() -> void:
 		B.mesh(end, B.cyl(0.018, 0.008, 0.035, 5), Vector3(0, -0.155 + k * 0.03, 0), rope)
 	# Small wooden buckler strapped to the left forearm
 	var shield := Node3D.new()
+	shield.name = "Shield"
 	shield.position = Vector3(-0.065, -0.13, 0)
 	shield.rotation_degrees = Vector3(0, 0, 90)
 	parts.forearm_l.add_child(shield)
@@ -127,6 +128,7 @@ func _ready() -> void:
 
 	# Sword: tapered blade, crossguard, wrapped grip, pommel
 	sword_root = Node3D.new()
+	sword_root.name = "Sword"
 	sword_root.position = Vector3(0, -0.3, -0.005)
 	parts.forearm_r.add_child(sword_root)
 	blade_mat = B.mat(Color(0.82, 0.86, 0.92))

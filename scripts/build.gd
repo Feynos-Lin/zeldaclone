@@ -219,8 +219,8 @@ static func paint_tex(base: Color, kind: String = "cloth", seed_value: int = 7) 
 		top = 1.06
 		bottom = 0.92
 	elif kind == "hair":
-		top = 1.3
-		bottom = 0.7
+		top = 1.18
+		bottom = 0.72
 	elif kind == "metal":
 		top = 1.25
 		bottom = 0.7
@@ -277,12 +277,16 @@ static func paint_tex(base: Color, kind: String = "cloth", seed_value: int = 7) 
 					elif posmod(x + y, 8) == 4:
 						img.set_pixel(x, y, img.get_pixel(x, y).lightened(0.15))
 		"hair":
-			for i in 40 * ks:
-				var x := rng.randi_range(0, W - 1)
-				var amt := rng.randf_range(0.1, 0.3)
+			for i in 22 * ks:
+				var x0 := rng.randi_range(0, W - 1)
+				var wdt := rng.randi_range(2, 4) * ks
+				var amt := rng.randf_range(0.04, 0.12)
 				for y in H:
-					var c := img.get_pixel(x, y)
-					img.set_pixel(x, y, c.darkened(amt) if i % 2 == 0 else c.lightened(amt * 0.6))
+					for dx in wdt:
+						var x := posmod(x0 + dx, W)
+						var c := img.get_pixel(x, y)
+						var a := amt * sin(PI * (dx + 0.5) / wdt)
+						img.set_pixel(x, y, c.darkened(a) if i % 2 == 0 else c.lightened(a * 0.8))
 		"leather":
 			for x in W:
 				img.set_pixel(x, 6 * ks, img.get_pixel(x, 6 * ks).darkened(0.35))
@@ -633,12 +637,20 @@ const HAIR_CAP := [
 ]
 
 # Chunky hair spikes: [azimuth° (0 front, 90 right), elevation°, length, base radius, upward tilt]
+# [azimuth° (0 front, 90 his right), elevation°, length, root radius, up-tilt, back-sweep, curl]
 const SPIKES_HERO := [
-	[-64, 50, 0.14, 0.05, -0.1, 0.1, 0.5], [62, 52, 0.14, 0.05, -0.05, 0.1, 0.5], [-10, 64, 0.13, 0.055, 0.45, -0.2], [18, 62, 0.12, 0.05, 0.4, -0.15],
-	[-2, 72, 0.17, 0.065, 0.7, 0.2], [-16, 82, 0.26, 0.05, 1.5, 0.3], [10, 84, 0.2, 0.045, 1.2, 0.5], [40, 62, 0.17, 0.06, 0.55, 0.4], [-44, 60, 0.17, 0.06, 0.55, 0.4],
-	[-82, 34, 0.18, 0.055, 0.45, 0.35], [82, 34, 0.18, 0.055, 0.45, 0.35], [-74, 10, 0.13, 0.05, -0.15, 0.1], [74, 10, 0.13, 0.05, -0.15, 0.1],
-	[-115, 44, 0.17, 0.058, 0.45, 0.4], [115, 44, 0.17, 0.058, 0.45, 0.4], [180, 44, 0.16, 0.065, 0.35, 0.3], [150, 18, 0.15, 0.06, -0.15, 0.2],
-	[-150, 18, 0.15, 0.06, -0.15, 0.2], [180, 8, 0.12, 0.055, -0.45, 0.0], [140, 64, 0.16, 0.06, 0.6, 0.45], [-140, 64, 0.16, 0.06, 0.6, 0.45],
+	# fringe falling forward at the sides of the forehead
+	[-34, 50, 0.15, 0.062, -0.75, -0.5, 0.05], [30, 54, 0.14, 0.06, -0.7, -0.45, 0.05], [-6, 64, 0.12, 0.056, -0.45, -0.5, 0.05],
+	# top locks sweeping back, one short cowlick up and to his right
+	[2, 74, 0.15, 0.075, -0.2, 1.5, 0.1], [-26, 70, 0.15, 0.072, -0.15, 1.3, 0.1], [28, 68, 0.15, 0.072, -0.15, 1.3, 0.1],
+	[16, 84, 0.19, 0.05, 0.6, 0.6, 0.2], [-14, 82, 0.14, 0.05, 0.2, 1.0, 0.1],
+	# sides sticking straight out, tips lifting a little
+	[-76, 36, 0.21, 0.07, -0.05, 0.25, 0.2], [76, 36, 0.21, 0.07, -0.05, 0.25, 0.2], [-102, 22, 0.19, 0.066, -0.15, 0.4, 0.15], [102, 22, 0.19, 0.066, -0.15, 0.4, 0.15],
+	[-60, 14, 0.14, 0.058, -0.55, 0.1, 0.05], [60, 14, 0.14, 0.058, -0.55, 0.1, 0.05],
+	# crown and back, hanging down and out
+	[-130, 54, 0.17, 0.072, -0.1, 1.1, 0.1], [130, 54, 0.17, 0.072, -0.1, 1.1, 0.1], [180, 44, 0.17, 0.076, -0.2, 1.1, 0.1],
+	[-152, 22, 0.16, 0.068, -0.55, 0.6, 0.05], [152, 22, 0.16, 0.068, -0.55, 0.6, 0.05], [180, 8, 0.14, 0.066, -0.8, 0.3, 0.05],
+	[-120, 4, 0.13, 0.06, -0.8, 0.25, 0.05], [120, 4, 0.13, 0.06, -0.8, 0.25, 0.05],
 ]
 const SPIKES_SHORT := [
 	[-25, 40, 0.07, 0.045, -0.3], [10, 44, 0.07, 0.045, -0.3], [35, 38, 0.06, 0.04, -0.2], [0, 75, 0.08, 0.05, 0.4],
@@ -696,7 +708,7 @@ static func capsule(radius: float, height: float) -> CapsuleMesh:
 	return c
 
 
-static func hair_spikes(head: Node3D, m: Material, spikes: Array, size: float = 1.0) -> void:
+static func hair_spikes(head: Node3D, m: Material, spikes: Array, size: float = 1.0, girth: float = 1.0, flat: float = 0.62) -> void:
 	var center := Vector3(0, 0.155, 0.012)
 	var radii := Vector3(0.11, 0.155, 0.12)
 	var jitter := RandomNumberGenerator.new()
@@ -710,7 +722,7 @@ static func hair_spikes(head: Node3D, m: Material, spikes: Array, size: float = 
 		var dir := (n + Vector3(0, float(sp[4]), sweep)).normalized()
 		var length: float = float(sp[2]) * size * jitter.randf_range(0.85, 1.15)
 		var bend: float = float(sp[6]) if sp.size() > 6 else 0.35
-		var mi := mesh(head, clump_mesh(snappedf(length, 0.005), float(sp[3]) * size, bend, 0.62), base - dir * length * 0.08, m)
+		var mi := mesh(head, clump_mesh(snappedf(length, 0.005), float(sp[3]) * size * girth, bend, flat), base - dir * length * 0.08, m)
 		var up := Vector3.BACK if absf(dir.y) > 0.95 else Vector3.UP
 		mi.basis = Basis.looking_at(dir, up) * Basis(Vector3.RIGHT, -PI * 0.5)
 
@@ -769,12 +781,16 @@ static func humanoid(model: Node3D, c: Dictionary) -> Dictionary:
 		if img.has_mipmaps():
 			img.clear_mipmaps()
 		var skin_c: Color = c.skin
-		for y in range(0, 22):
-			var half := int(maxf(0.0, 6.0 - y * 0.28))
-			for x in range(32 - half, 33 + half):
-				img.set_pixel(x, y, skin_c.darkened(0.12 + y * 0.004))
-			img.set_pixel(32 - half - 1, y, shirt_col.darkened(0.35))
-			img.set_pixel(32 + half + 1, y, shirt_col.darkened(0.35))
+		var tw := img.get_width()
+		var sc := tw / 64
+		var cx := tw / 2
+		for y in range(0, 16 * sc):
+			var half := int(maxf(0.0, (5.0 - y * 0.3 / sc) * sc))
+			for x in range(cx - half, cx + half + 1):
+				img.set_pixel(x, y, skin_c.darkened(0.15 + y * 0.004 / sc))
+			for t in sc:
+				img.set_pixel(cx - half - 1 - t, y, shirt_col.darkened(0.4))
+				img.set_pixel(cx + half + 1 + t, y, shirt_col.darkened(0.4))
 		img.generate_mipmaps()
 		torso_mat = tex_mat(ImageTexture.create_from_image(img))
 		torso_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -856,10 +872,10 @@ static func humanoid(model: Node3D, c: Dictionary) -> Dictionary:
 
 	var style: String = c.get("hair_style", "short")
 	if style != "none":
-		mesh(head, loft(rings_offset(HAIR_CAP, -1.5), 18), Vector3.ZERO, hair)
+		mesh(head, loft(rings_offset(HAIR_CAP, -1.5, 1.1 if style == "spiky" else 1.0), 18), Vector3(0, 0.008 if style == "spiky" else 0.0, 0.006 if style == "spiky" else 0.0), hair)
 	match style:
 		"spiky":
-			hair_spikes(head, hair, SPIKES_HERO, 1.12)
+			hair_spikes(head, hair, SPIKES_HERO, 0.9, 1.3, 0.5)
 		"short":
 			hair_spikes(head, hair, SPIKES_SHORT, 1.1)
 		"stringy":
