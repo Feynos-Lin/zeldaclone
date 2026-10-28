@@ -5,7 +5,7 @@ extends Control
 var main
 var controls
 var open := false
-var items := ["Resume", "Controller setup", "Reset controller mapping", "Quit game"]
+var items: Array = []
 var selected := 0
 var item_rects: Array = []
 var status := ""
@@ -61,10 +61,33 @@ func _process(delta: float) -> void:
 			main.sfx.play("blip")
 		if Input.is_action_just_pressed("action"):
 			choose(selected)
+		elif Input.is_action_just_pressed("move_left"):
+			choose(selected, -1)
+		elif Input.is_action_just_pressed("move_right") and items[selected] in ["Graphics", "Resolution", "Display"]:
+			choose(selected, 1)
 	queue_redraw()
 
 
+func build_items() -> void:
+	items = ["Resume", "Graphics", "Resolution"]
+	if not main.graphics.mobile:
+		items.append("Display")
+	items.append_array(["Controller setup", "Reset controller mapping", "Quit game"])
+
+
+func item_label(i: int) -> String:
+	match items[i]:
+		"Graphics":
+			return "Graphics:  < %s >" % main.graphics.quality_name()
+		"Resolution":
+			return "Resolution:  < %s >" % main.graphics.resolution_name()
+		"Display":
+			return "Display:  < %s >" % main.graphics.display_name()
+	return items[i]
+
+
 func show_menu() -> void:
+	build_items()
 	open = true
 	visible = true
 	selected = 0
@@ -92,11 +115,20 @@ func pad_device() -> int:
 	return pads[0] if not pads.is_empty() else -1
 
 
-func choose(i: int) -> void:
+func choose(i: int, dir: int = 1) -> void:
+	if dir < 0 and not items[i] in ["Graphics", "Resolution", "Display"]:
+		return
 	main.sfx.play("shard")
 	match items[i]:
 		"Resume":
 			hide_menu()
+		"Graphics":
+			main.graphics.cycle_quality(dir)
+		"Resolution":
+			main.graphics.cycle_resolution(dir)
+		"Display":
+			main.graphics.toggle_fullscreen()
+
 		"Controller setup":
 			var d := pad_device()
 			if d < 0:
@@ -256,8 +288,8 @@ func _draw() -> void:
 	var h := size.y
 	var font := get_theme_default_font()
 	draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.03, 0.06, 0.72))
-	var pw := minf(w - 40.0, 320.0)
-	var ph := 170.0
+	var pw := minf(w - 30.0, 340.0)
+	var ph := 72.0 + items.size() * 20.0 + 26.0
 	var panel := Rect2((w - pw) * 0.5, (h - ph) * 0.5, pw, ph)
 	draw_rect(panel, Color(0.08, 0.07, 0.1, 0.92))
 	draw_rect(panel, Color(0.7, 0.62, 0.45), false, 1.0)
@@ -267,13 +299,13 @@ func _draw() -> void:
 		draw_centered(font, "PAUSED", Vector2(w * 0.5, panel.position.y + 22), 16, Color(0.95, 0.88, 0.7))
 		item_rects.clear()
 		for i in items.size():
-			var y := panel.position.y + 48 + i * 22
-			var r := Rect2(panel.position.x + 30, y - 13, pw - 60, 19)
+			var y := panel.position.y + 46 + i * 20
+			var r := Rect2(panel.position.x + 20, y - 13, pw - 40, 18)
 			item_rects.append(r)
 			if i == selected:
 				draw_rect(r, Color(0.75, 0.6, 0.3, 0.35))
 				draw_string(font, Vector2(r.position.x + 6, y + 1), ">", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.9, 0.6))
-			draw_centered(font, items[i], Vector2(w * 0.5, y + 1), 11, Color(1, 1, 1) if i == selected else Color(0.78, 0.76, 0.72))
+			draw_centered(font, item_label(i), Vector2(w * 0.5, y + 1), 11, Color(1, 1, 1) if i == selected else Color(0.78, 0.76, 0.72))
 		var pads: Array = controls.pad_devices()
 		var pad_text := "No controller connected"
 		if not pads.is_empty():

@@ -29,6 +29,8 @@ var stems := []
 var caps := []
 var tree_body: StaticBody3D
 var tree_spots := []
+var detail_nodes := []   # grass, flowers, mushrooms: draw distance follows the Graphics setting
+var tree_nodes := []     # forest chunks: draw distance follows the Graphics setting
 
 
 func build(m) -> void:
@@ -92,7 +94,7 @@ func xf(pos: Vector3, scale: Vector3, yaw: float = 0.0, tilt: Vector3 = Vector3.
 
 ## Batches instances into 24 m chunks so off-screen and far-away parts of the
 ## forest are culled instead of drawn every frame.
-func flush(mesh: Mesh, mat: Material, items: Array, view_range: float = 64.0) -> void:
+func flush(mesh: Mesh, mat: Material, items: Array, view_range: float = 64.0, detail: bool = false, shadows: bool = true) -> void:
 	var groups := {}
 	for it in items:
 		var o: Vector3 = (it[0] as Transform3D).origin
@@ -113,10 +115,14 @@ func flush(mesh: Mesh, mat: Material, items: Array, view_range: float = 64.0) ->
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = mat
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mmi.visibility_range_end = view_range
 		mmi.visibility_range_end_margin = 6.0
 		world.add_child(mmi)
+		if detail:
+			detail_nodes.append(mmi)
+		else:
+			tree_nodes.append(mmi)
 
 
 func vc_mat(tex_color: Color, kind: String, seed_value: int = 7, double_sided: bool = false) -> StandardMaterial3D:
@@ -146,13 +152,13 @@ func tuft_mesh() -> ArrayMesh:
 
 func flush_all() -> void:
 	var white := Color(0.95, 0.95, 0.95)
-	flush(B.cyl(0.62, 1.0, 1.0, 7), vc_mat(white, "hair", 51), trunks)
-	flush(B.sphere(1.0, 7, 4), vc_mat(white, "leaf", 52), blobs)
-	flush(B.cyl(0.0, 1.0, 1.0, 6), vc_mat(white, "leaf", 53), cones)
-	flush(tuft_mesh(), vc_mat(white, "grass", 54, true), tufts, 32.0)
-	flush(B.sphere(1.0, 5, 3), vc_mat(white, "skin", 55), flowers, 36.0)
-	flush(B.cyl(0.7, 1.0, 1.0, 6), vc_mat(white, "skin", 56), stems, 36.0)
-	flush(B.sphere(1.0, 7, 4), vc_mat(white, "leaf", 57), caps, 36.0)
+	flush(B.cyl(0.62, 1.0, 1.0, 8), vc_mat(white, "hair", 51), trunks)
+	flush(B.sphere(1.0, 10, 6), vc_mat(white, "leaf", 52), blobs)
+	flush(B.cyl(0.0, 1.0, 1.0, 8), vc_mat(white, "leaf", 53), cones)
+	flush(tuft_mesh(), vc_mat(white, "grass", 54, true), tufts, 40.0, true, false)
+	flush(B.sphere(1.0, 6, 4), vc_mat(white, "skin", 55), flowers, 36.0, true, false)
+	flush(B.cyl(0.7, 1.0, 1.0, 7), vc_mat(white, "skin", 56), stems, 36.0, true, false)
+	flush(B.sphere(1.0, 8, 5), vc_mat(white, "leaf", 57), caps, 36.0, true, false)
 
 
 # ------------------------------------------------------------------ ground
@@ -597,7 +603,7 @@ func build_cave() -> void:
 
 func build_decor() -> void:
 	# Grass tufts and wildflowers everywhere it's open
-	for i in 1900:
+	for i in 3400:
 		var p := Vector3(rng.randf_range(MIN_X - 6, MAX_X + 6), 0, rng.randf_range(MIN_Z - 6, MAX_Z - 3))
 		if flat_len(p) < 9.5 or dist_to_path(p) < 1.6:
 			continue
@@ -692,7 +698,7 @@ func merge_static() -> void:
 		var merged := MeshInstance3D.new()
 		merged.mesh = st.commit()
 		merged.material_override = list[0].material_override
-		merged.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		merged.cast_shadow = list[0].cast_shadow
 		world.add_child(merged)
 		for mi in list:
 			mi.get_parent().remove_child(mi)

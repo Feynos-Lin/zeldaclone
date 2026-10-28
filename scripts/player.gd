@@ -76,11 +76,11 @@ func _ready() -> void:
 	model = Node3D.new()
 	add_child(model)
 	parts = B.humanoid(model, {
-		"skin": Color(0.96, 0.79, 0.66),
+		"skin": Color(0.95, 0.74, 0.58),
 		"shirt": Color(0.52, 0.32, 0.19),
 		"arm": Color(0.52, 0.32, 0.19),
 		"forearm": Color(0.5, 0.31, 0.18),
-		"hand": Color(0.96, 0.79, 0.66),
+		"hand": Color(0.95, 0.74, 0.58),
 		"pants": Color(0.56, 0.53, 0.48),
 		"hair": Color(0.47, 0.29, 0.14),
 		"boots": Color(0.44, 0.29, 0.17),
@@ -135,6 +135,7 @@ func _ready() -> void:
 	B.mesh(sword_root, B.box_mesh(Vector3(0.22, 0.04, 0.045)), Vector3(0, 0, -0.1), B.paint_mat(Color(0.5, 0.48, 0.45), "metal"))
 	B.mesh(sword_root, B.cyl(0.02, 0.022, 0.18, 6), Vector3(0, 0, 0.0), leather, Vector3(90, 0, 0))
 	B.mesh(sword_root, B.sphere(0.032, 6, 4), Vector3(0, 0, 0.1), B.paint_mat(Color(0.5, 0.48, 0.45), "metal"))
+	B.merge_children(model)
 	B.blob_shadow(self)
 	rest_pose()
 

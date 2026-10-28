@@ -79,6 +79,7 @@ func _ready() -> void:
 			model.scale = Vector3.ONE * 0.68
 		B.blob_shadow(self, 0.4)
 	add_child(cs)
+	B.merge_children(model)
 	model.rotation.y = base_yaw
 	t = randf() * 10.0
 

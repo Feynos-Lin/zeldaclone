@@ -39,7 +39,7 @@ func _ready() -> void:
 
 	speed = randf_range(1.3, 1.8)
 	anim_t = randf() * TAU
-	var tint := randf_range(-0.05, 0.05)
+	var tint: float = [-0.04, 0.0, 0.04].pick_random()
 	model = Node3D.new()
 	add_child(model)
 	var skin := Color(0.5 + tint, 0.58 + tint, 0.45)
@@ -53,6 +53,7 @@ func _ready() -> void:
 		"hair": [Color(0.22, 0.22, 0.2), Color(0.35, 0.3, 0.25), Color(0.5, 0.5, 0.48)].pick_random(),
 		"boots": Color(0.17, 0.14, 0.12),
 		"face": "zombie",
+		"face_res": 1,
 		"glow_eyes": Color(1.0, 0.3, 0.15),
 		"hair_style": ["stringy", "none", "stringy", "long", "short"].pick_random(),
 		"head_scale": 1.32,
@@ -83,6 +84,7 @@ func _ready() -> void:
 	B.blob_shadow(self, 0.48)
 	model.scale = Vector3.ONE * randf_range(0.95, 1.1)
 
+	B.merge_children(model)
 	flash_mat = B.glow(Color(1, 1, 1))
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		mesh_mats.append([mi, mi.material_override])

@@ -14,6 +14,7 @@ const SfxScript = preload("res://scripts/sfx.gd")
 const WorldScript = preload("res://scripts/world.gd")
 const ControlsScript = preload("res://scripts/controls.gd")
 const PauseScript = preload("res://scripts/pause_menu.gd")
+const GraphicsScript = preload("res://scripts/graphics.gd")
 
 const HOURS_PER_SEC := 1.0 / 20.0      # one in-game hour every 20 seconds
 const SPAWN_POINT := Vector3(8, 0, 113)
@@ -36,6 +37,7 @@ var ward_radius := 27.0
 var world_builder
 var controls
 var pause_menu
+var graphics
 var world: Node3D
 var player
 var cam_rig
@@ -44,6 +46,8 @@ var touch
 var sfx
 var env: Environment
 var sun: DirectionalLight3D
+var fill: DirectionalLight3D
+var sky_mat: ProceduralSkyMaterial
 var lanterns: Array = []      # [OmniLight3D, base energy, flicker]
 var window_mats: Array = []
 var lock_marker: Node3D
@@ -115,6 +119,10 @@ func _ready() -> void:
 	pause_menu.controls = controls
 	pause_menu.theme = theme
 	ui.add_child(pause_menu)
+	graphics = GraphicsScript.new()
+	graphics.main = self
+	add_child(graphics)
+	graphics.apply_display()
 	hud.set_hint(controls.hint_text())
 	controls.device_changed.connect(func(_kind): hud.set_hint(controls.hint_text()))
 	controls.message.connect(func(text): hud.toast(text))
@@ -132,21 +140,59 @@ func _ready() -> void:
 func build_environment() -> void:
 	var we := WorldEnvironment.new()
 	env = Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	sky_mat = ProceduralSkyMaterial.new()
+	sky_mat.sky_curve = 0.12
+	sky_mat.ground_curve = 0.05
+	sky_mat.sun_angle_max = 18.0
+	sky_mat.sun_curve = 0.08
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
+	sky.radiance_size = Sky.RADIANCE_SIZE_32
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_depth_begin = 14.0
-	env.fog_depth_end = 62.0
-	env.fog_depth_curve = 1.0
+	env.fog_depth_begin = 16.0
+	env.fog_depth_end = 70.0
+	env.fog_depth_curve = 1.2
 	env.fog_density = 1.0
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.fog_sky_affect = 0.35
+	# Soft, warm "late-GameCube" grade with a little bloom on lights.
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.0
+	env.tonemap_white = 4.0
+	env.glow_enabled = true
+	env.glow_intensity = 0.55
+	env.glow_strength = 1.0
+	env.glow_bloom = 0.06
+	env.glow_hdr_threshold = 0.85
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 1.0
+	env.adjustment_contrast = 1.1
+	env.adjustment_saturation = 1.0
 	we.environment = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, 35, 0)
-	sun.shadow_enabled = false
+	sun.shadow_enabled = true
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	sun.directional_shadow_max_distance = 42.0
+	sun.directional_shadow_split_1 = 0.22
+	sun.shadow_blur = 1.6
+	sun.shadow_bias = 0.04
+	sun.shadow_normal_bias = 1.2
+	sun.shadow_opacity = 0.9
 	add_child(sun)
+	# Cool bounce light from the sky on the shadow side.
+	fill = DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-30, 215, 0)
+	fill.light_color = Color(0.62, 0.72, 1.0)
+	fill.light_energy = 0.22
+	fill.shadow_enabled = false
+	fill.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+	add_child(fill)
 
 
 func spawn_npcs() -> void:
@@ -390,8 +436,7 @@ func _process(delta: float) -> void:
 		if Input.is_action_just_pressed("action"):
 			respawn()
 	if Input.is_action_just_pressed("fullscreen"):
-		var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fs else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		graphics.toggle_fullscreen()
 
 	var tgt = player.target
 	if tgt != null and is_instance_valid(tgt):
@@ -431,14 +476,26 @@ func update_sky(_delta: float) -> void:
 	var sky: Color = (a[1] as Color).lerp(b[1], t)
 	var energy: float = lerpf(a[2], b[2], t)
 	var amb: float = lerpf(a[3], b[3], t)
-	env.background_color = sky
-	env.fog_light_color = sky
-	env.ambient_light_color = sky.lerp(Color(0.55, 0.6, 0.85), 0.55)
-	env.ambient_light_energy = amb
 	var day_f := clampf((energy - 0.22) / 0.88, 0.0, 1.0)
-	sun.light_energy = energy
-	sun.light_color = Color(0.55, 0.62, 1.0).lerp(Color(1.0, 0.96, 0.88), day_f)
 	var night_f := 1.0 - day_f
+	sky_mat.sky_top_color = sky.darkened(0.28).lerp(Color(0.2, 0.36, 0.72), day_f * 0.5)
+	sky_mat.sky_horizon_color = sky.lightened(0.12)
+	sky_mat.ground_horizon_color = sky.lightened(0.05)
+	sky_mat.ground_bottom_color = sky.darkened(0.5)
+	sky_mat.sun_angle_max = 18.0 if day_f > 0.1 else 0.0
+	env.background_color = sky
+	env.fog_light_color = sky.lightened(0.08)
+	env.ambient_light_color = sky.lerp(Color(0.62, 0.64, 0.78), 0.6)
+	env.ambient_light_energy = amb * 0.55
+	sun.light_energy = energy * 1.3
+	sun.light_color = Color(0.55, 0.62, 1.0).lerp(Color(1.0, 0.93, 0.8), day_f)
+	# Sun arcs across the sky by day; at night the light comes from the moon's side.
+	var sun_t := clampf((h - 6.0) / 13.0, 0.0, 1.0)
+	if day_f > 0.05:
+		sun.rotation_degrees = Vector3(-18.0 - sin(sun_t * PI) * 42.0, lerpf(80.0, -60.0, sun_t), 0)
+	else:
+		sun.rotation_degrees = Vector3(-48, 200, 0)
+	fill.light_energy = lerpf(0.14, 0.3, day_f)
 	for l in lanterns:
 		var light: OmniLight3D = l[0]
 		light.light_energy = l[1] * (0.25 + 0.75 * night_f) * (1.0 + randf_range(-l[2], l[2]))

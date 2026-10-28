@@ -1,6 +1,6 @@
 # Wrenmoor
 
-An N64-style action adventure prototype built with Godot 4.4. It runs natively on Android and on Fedora/Linux.
+A stylized, GameCube-era-looking action adventure prototype built with Godot 4.4. It runs natively on Android and on Fedora/Linux.
 
 You start in Wrenmoor, a village in a forest clearing, at dusk. Past the glowing ward-stones a trail winds through the woods to Hollow Cave, where the dead keep crawling out. More of them come at night.
 
@@ -25,6 +25,17 @@ Every push to `main` builds a new release (see the Releases page):
 | Pause menu | Esc / P | Start or Back | |
 | Fullscreen | F11 | | |
 
+### Graphics settings
+
+Press Start or Esc for the pause menu, then use left and right on an option to change it:
+
+- **Graphics:** Low (no shadows or bloom, shorter draw distance), Medium (sun shadows, bloom; the default on Android) or High (2x anti-aliasing, longer shadows, denser grass; the default on desktop).
+- **Resolution (desktop):** Native, or 1280x720 to 2560x1440 (16:9), 1280x800 to 1920x1200 (16:10), 1024x768 to 1920x1440 (4:3), 1280x1024 (5:4), 2560x1080 and 3440x1440 (21:9). In fullscreen a ratio that doesn't match your monitor gets black bars, and sizes above your screen are rendered sharper and scaled down.
+- **Resolution (Android):** the 3D render resolution: 480p, 720p (default), 1080p, 1440p or Native.
+- **Display (desktop):** Windowed or Fullscreen (F11 also toggles it).
+
+Settings are saved on the device.
+
 ### Controllers
 
 Xbox-style (XInput) pads, PlayStation, Nintendo, and the DInput pads in Godot's built-in controller database work as soon as they're plugged in or paired, on Fedora and Android. Pads with an X/D mode switch work in either mode. On-screen prompts use your controller's own button names, and it rumbles when you're hit or land a strike.
@@ -38,7 +49,8 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - 3-hit sword combo, charged spin attack, dodge roll with invincibility, lock-on with letterbox bars
 - Hearts, bone shards and heart drops, death and respawn
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises
-- Low-res rendering, depth fog, vertex lighting and blob shadows for the N64 look
+- Hand-painted look: soft per-pixel lighting, real sun shadows, sky, bloom and film-style grading
+- Pause menu settings: Graphics (Low / Medium / High), Resolution (up to 1440p in 16:9, 16:10, 4:3, 5:4 and 21:9 on desktop; render resolution on Android) and Windowed / Fullscreen
 - All models, textures and sounds are generated in code, so there are no asset files
 
 ## Project layout
