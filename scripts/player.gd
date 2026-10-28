@@ -33,6 +33,33 @@ var roll_dir := Vector3.ZERO
 var target = null
 var anim_t := 0.0
 
+# Sword-arm poses: [arm direction, blade direction, torso twist, elbow bend, blade flat hint].
+# Directions are in the hero's own space: -Z is forward, +X his right, +Y up.
+const REST_POSE := [Vector3(0.12, -1.0, -0.18), Vector3(0.12, -0.4, -1.0), 0.0, 0.35, Vector3.UP]
+const GUARD_POSE := [Vector3(0.22, -0.6, -0.78), Vector3(0.05, 0.3, -1.0), -0.12, 0.6, Vector3.UP]
+const CHARGE_POSE := [Vector3(0.85, -0.05, 0.45), Vector3(0.5, 0.1, 0.86), -0.6, 0.35, Vector3.UP]
+const SPIN_POSE := [Vector3(1.0, 0.05, -0.2), Vector3(1.0, 0.0, -0.1), 0.0, 0.1, Vector3.UP]
+# Each swing: wind-up, contact, follow-through.
+const SWINGS := [
+	[   # right-to-left slash
+		[Vector3(0.9, 0.0, 0.35), Vector3(0.45, 0.18, 0.87), -0.55, 0.35, Vector3.UP],
+		[Vector3(0.25, 0.05, -1.0), Vector3(0.1, -0.02, -1.0), 0.0, 0.1, Vector3.UP],
+		[Vector3(-0.6, -0.15, -0.75), Vector3(-0.95, -0.12, -0.25), 0.55, 0.2, Vector3.UP],
+	],
+	[   # backhand, left-to-right
+		[Vector3(-0.45, -0.05, -0.6), Vector3(-0.95, 0.15, 0.15), 0.5, 0.45, Vector3.UP],
+		[Vector3(0.3, 0.08, -1.0), Vector3(0.2, 0.0, -1.0), 0.0, 0.15, Vector3.UP],
+		[Vector3(0.95, -0.05, -0.15), Vector3(0.85, -0.12, 0.5), -0.55, 0.2, Vector3.UP],
+	],
+	[   # overhead chop
+		[Vector3(0.3, 1.0, 0.12), Vector3(0.05, 0.55, 0.85), -0.15, 1.1, Vector3.RIGHT],
+		[Vector3(0.2, 0.35, -1.0), Vector3(0.05, 0.45, -1.0), 0.0, 0.25, Vector3.RIGHT],
+		[Vector3(0.15, -0.55, -0.85), Vector3(0.05, -0.8, -0.6), 0.05, 0.15, Vector3.RIGHT],
+	],
+]
+var cur_pose: Array = REST_POSE
+var from_pose: Array = REST_POSE
+
 
 func _ready() -> void:
 	add_to_group("player")
@@ -86,7 +113,8 @@ func _ready() -> void:
 
 	# Sword: tapered blade, crossguard, wrapped grip, pommel
 	sword_root = Node3D.new()
-	body.add_child(sword_root)
+	sword_root.position = Vector3(0, -0.3, -0.005)
+	parts.forearm_r.add_child(sword_root)
 	blade_mat = B.mat(Color(0.82, 0.86, 0.92))
 	B.mesh(sword_root, B.box_mesh(Vector3(0.055, 0.014, 0.78)), Vector3(0, 0, -0.5), blade_mat)
 	B.mesh(sword_root, B.prism(Vector3(0.055, 0.14, 0.014)), Vector3(0, 0, -0.96), blade_mat, Vector3(-90, 0, 0))
@@ -217,13 +245,14 @@ func start_attack(c: int, is_spin: bool) -> void:
 	hit_done = false
 	spin = is_spin
 	held_time = 0.0
+	from_pose = cur_pose
 	face_target()
 	blade_mat.albedo_color = Color(0.82, 0.86, 0.92)
 	main.sfx.play("spin" if is_spin else "swing")
 
 
 func state_attack(delta: float) -> void:
-	var dur := 0.5 if spin else 0.32
+	var dur := 0.5 if spin else 0.38
 	var t := clampf(state_time / dur, 0.0, 1.0)
 	var lunge := 0.0 if spin else 4.0 * (1.0 - t)
 	velocity.x = facing.x * lunge
@@ -232,10 +261,10 @@ func state_attack(delta: float) -> void:
 		held_time += delta
 	if not spin and state_time > 0.08 and Input.is_action_just_pressed("attack"):
 		combo_queued = true
-	if not hit_done and state_time >= (0.14 if spin else 0.08):
+	if not hit_done and state_time >= (0.14 if spin else dur * 0.4):
 		hit_done = true
 		do_hit()
-	pose_sword(t)
+	pose_attack(t)
 	if state_time >= dur:
 		if combo_queued and combo < 2:
 			start_attack(combo + 1, false)
@@ -254,9 +283,6 @@ func state_charge(move_dir: Vector3) -> void:
 		face_target()
 	elif move_dir.length() > 0.1:
 		facing = move_dir.normalized()
-	sword_root.position = Vector3(0.24, 1.0, 0.12)
-	sword_root.rotation_degrees = Vector3(-8, 115, 0)
-	parts.arm_r.rotation.x = 0.6
 	if state_time >= CHARGE_TIME:
 		var f := 0.5 + 0.5 * sin(state_time * 30.0)
 		blade_mat.albedo_color = Color(0.82, 0.86, 0.92).lerp(Color(1.0, 0.95, 0.5), f)
@@ -268,7 +294,6 @@ func state_charge(move_dir: Vector3) -> void:
 		else:
 			state = "move"
 			blade_mat.albedo_color = Color(0.82, 0.86, 0.92)
-			rest_pose()
 
 
 func start_roll(dir: Vector3) -> void:
@@ -362,26 +387,58 @@ func respawn(pos: Vector3) -> void:
 
 
 func rest_pose() -> void:
-	sword_root.position = Vector3(0.24, 0.8, -0.03)
-	sword_root.rotation_degrees = Vector3(-62, 0, 0)
-	parts.arm_r.rotation = Vector3.ZERO
-	parts.forearm_r.rotation.x = 0.35
+	parts.pivot.rotation.y = 0.0
+	apply_pose(REST_POSE)
 
 
-func pose_sword(t: float) -> void:
-	# Sword swings around the chest; arm follows.
-	sword_root.position = Vector3(0.05, 1.12, -0.12)
-	var e := 1.0 - pow(1.0 - t, 3.0)
+func nlerp(a: Vector3, b: Vector3, t: float) -> Vector3:
+	var v := a.normalized().lerp(b.normalized(), t)
+	return v.normalized() if v.length() > 0.001 else b.normalized()
+
+
+func blend_pose(p: Array, q: Array, t: float) -> Array:
+	return [nlerp(p[0], q[0], t), nlerp(p[1], q[1], t), lerpf(p[2], q[2], t), lerpf(p[3], q[3], t), q[4] if t > 0.5 else p[4]]
+
+
+## Points the shoulder, bends the elbow, twists the torso, and angles the blade.
+func apply_pose(p: Array) -> void:
+	cur_pose = p
+	var twist: float = p[2]
+	parts.body.rotation.y = twist
+	parts.leg_l.rotation.y = -twist
+	parts.leg_r.rotation.y = -twist
+	var d: Vector3 = (p[0] as Vector3).normalized()
+	var up := Vector3.BACK if absf(d.y) > 0.9 else Vector3.UP
+	parts.arm_r.basis = Basis.looking_at(d, up) * Basis(Vector3.RIGHT, PI * 0.5)
+	parts.forearm_r.rotation.x = p[3]
+	var bd: Vector3 = (p[1] as Vector3).normalized()
+	var hint: Vector3 = p[4]
+	if absf(bd.dot(hint)) > 0.95:
+		hint = Vector3.BACK
+	sword_root.global_basis = parts.body.global_basis * Basis.looking_at(bd, hint)
+
+
+func pose_attack(t: float) -> void:
 	if spin:
-		sword_root.rotation_degrees = Vector3(0, 90.0 - e * 400.0, 0)
-		model.rotation.y += 0.0
-	elif combo == 0:
-		sword_root.rotation_degrees = Vector3(-5, lerp(100.0, -85.0, e), 0)
-	elif combo == 1:
-		sword_root.rotation_degrees = Vector3(5, lerp(-100.0, 85.0, e), 0)
+		var e := 1.0 - pow(1.0 - t, 2.0)
+		parts.pivot.rotation.y = lerpf(-0.6, TAU, e)
+		apply_pose(blend_pose(from_pose, SPIN_POSE, minf(t * 6.0, 1.0)))
+		return
+	var k: Array = SWINGS[combo]
+	var p: Array
+	if t < 0.22:
+		var w := t / 0.22
+		p = blend_pose(from_pose, k[0], 1.0 - (1.0 - w) * (1.0 - w))
+	elif t < 0.6:
+		var w := (t - 0.22) / 0.38
+		w = w * w * (3.0 - 2.0 * w)
+		if w < 0.5:
+			p = blend_pose(k[0], k[1], w * 2.0)
+		else:
+			p = blend_pose(k[1], k[2], (w - 0.5) * 2.0)
 	else:
-		sword_root.rotation_degrees = Vector3(lerp(80.0, -65.0, e), 0, 0)
-	parts.arm_r.rotation.x = 1.3
+		p = k[2]
+	apply_pose(p)
 
 
 func animate(delta: float) -> void:
@@ -413,12 +470,26 @@ func animate(delta: float) -> void:
 		if target != null:
 			al.rotation.x = 0.5   # shield up while locked on
 			parts.forearm_l.rotation.x = 1.3
+		var want: Array
+		if state == "charge":
+			want = CHARGE_POSE.duplicate()
+			if state_time >= CHARGE_TIME:
+				want[0] = (want[0] as Vector3) + Vector3(randf_range(-0.03, 0.03), randf_range(-0.03, 0.03), 0)
+		elif target != null:
+			want = GUARD_POSE
+		else:
+			want = REST_POSE.duplicate()
+			if hspeed > 0.4:
+				want[0] = Vector3(0.12, -1.0, -0.18 + sin(anim_t) * 0.4)
+		apply_pose(blend_pose(cur_pose, want, minf(1.0, 14.0 * delta)))
 	elif state == "attack":
 		la.rotation.x = 0.4
 		lr.rotation.x = -0.3
 		parts.shin_l.rotation.x = -0.2
 		parts.shin_r.rotation.x = -0.4
-	elif state == "roll":
+	if state == "roll" or state == "hurt" or state == "dead":
+		apply_pose(blend_pose(cur_pose, REST_POSE, minf(1.0, 14.0 * delta)))
+	if state == "roll":
 		la.rotation.x = 1.6
 		lr.rotation.x = 1.3
 		parts.shin_l.rotation.x = -2.0
