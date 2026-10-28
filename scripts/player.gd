@@ -49,28 +49,50 @@ func _ready() -> void:
 	model = Node3D.new()
 	add_child(model)
 	parts = B.humanoid(model, {
-		"skin": Color(0.93, 0.76, 0.6),
-		"shirt": Color(0.24, 0.32, 0.5),
-		"arm": Color(0.2, 0.26, 0.42),
-		"pants": Color(0.36, 0.28, 0.2),
-		"hair": Color(0.2, 0.13, 0.08),
-		"boots": Color(0.28, 0.17, 0.09),
+		"skin": Color(0.93, 0.76, 0.62),
+		"shirt": Color(0.2, 0.3, 0.52),
+		"arm": Color(0.2, 0.3, 0.52),
+		"forearm": Color(0.86, 0.8, 0.66),
+		"hand": Color(0.42, 0.27, 0.15),
+		"pants": Color(0.45, 0.36, 0.26),
+		"hair": Color(0.32, 0.2, 0.11),
+		"boots": Color(0.3, 0.19, 0.1),
+		"eye_color": Color(0.25, 0.5, 0.35),
+		"hair_style": "short",
+		"bulk": 1.04,
 	})
 	var body: Node3D = parts.body
-	var scarf := B.mat(Color(0.78, 0.16, 0.12))
-	B.mesh(body, B.box_mesh(Vector3(0.6, 0.14, 0.38)), Vector3(0, 1.42, 0), scarf)
-	B.mesh(body, B.box_mesh(Vector3(0.16, 0.5, 0.06)), Vector3(0.12, 1.18, 0.21), scarf, Vector3(18, 0, 10))
-	B.mesh(body, B.box_mesh(Vector3(0.58, 0.08, 0.34)), Vector3(0, 0.84, 0), B.mat(Color(0.3, 0.2, 0.1)))
-	# Round-ish wooden shield strapped to the left arm
-	B.mesh(parts.arm_l, B.cyl(0.3, 0.3, 0.07, 8), Vector3(-0.12, -0.32, 0), B.mat(Color(0.5, 0.33, 0.16)), Vector3(0, 0, 90))
-	B.mesh(parts.arm_l, B.cyl(0.08, 0.08, 0.09, 6), Vector3(-0.15, -0.32, 0), B.mat(Color(0.7, 0.68, 0.6)), Vector3(0, 0, 90))
+	var tunic := B.mat(Color(0.2, 0.3, 0.52))
+	var leather := B.mat(Color(0.36, 0.22, 0.12))
+	# Tunic skirt flaring over the hips
+	B.mesh(body, B.loft([[0.66, 0.2, 0.16], [0.8, 0.178, 0.135], [0.92, 0.158, 0.114], [1.0, 0.146, 0.104]], 12), Vector3.ZERO, tunic)
+	# Belt with a brass buckle
+	B.mesh(body, B.loft([[0.95, 0.156, 0.112], [1.02, 0.15, 0.108]], 12), Vector3.ZERO, leather)
+	B.mesh(body, B.box_mesh(Vector3(0.06, 0.05, 0.02)), Vector3(0, 0.985, -0.112), B.mat(Color(0.8, 0.65, 0.25)))
+	# Strap across the chest
+	B.mesh(body, B.box_mesh(Vector3(0.04, 0.5, 0.25)), Vector3(0.0, 1.2, 0.0), leather, Vector3(0, 0, 38))
+	# Red scarf wrapped around the neck, with a tail that hangs behind
+	var scarf := B.mat(Color(0.75, 0.15, 0.12))
+	B.mesh(body, B.loft([[1.4, 0.12, 0.1], [1.45, 0.105, 0.092], [1.5, 0.068, 0.068]], 12), Vector3.ZERO, scarf)
+	B.mesh(body, B.loft([[1.06, 0.035, 0.012, 0.13], [1.25, 0.045, 0.014, 0.125], [1.43, 0.05, 0.015, 0.1]], 6), Vector3(0.05, 0, 0), scarf)
+	# Round wooden shield with an iron rim, strapped to the left forearm
+	var shield := Node3D.new()
+	shield.position = Vector3(-0.07, -0.13, 0)
+	shield.rotation_degrees = Vector3(0, 0, 90)
+	parts.forearm_l.add_child(shield)
+	B.mesh(shield, B.cyl(0.25, 0.25, 0.04, 12), Vector3.ZERO, B.mat(Color(0.52, 0.34, 0.17), B.noise_tex(0.1, "planks", 3), 1.2))
+	B.mesh(shield, B.cyl(0.265, 0.265, 0.03, 12), Vector3(0, 0.005, 0), B.mat(Color(0.45, 0.45, 0.48)))
+	B.mesh(shield, B.sphere(0.06, 8, 4), Vector3(0, 0.03, 0), B.mat(Color(0.6, 0.6, 0.62)))
 
+	# Sword: tapered blade, crossguard, wrapped grip, pommel
 	sword_root = Node3D.new()
 	body.add_child(sword_root)
 	blade_mat = B.mat(Color(0.82, 0.86, 0.92))
-	B.mesh(sword_root, B.box_mesh(Vector3(0.07, 0.03, 1.0)), Vector3(0, 0, -0.62), blade_mat)
-	B.mesh(sword_root, B.box_mesh(Vector3(0.32, 0.07, 0.07)), Vector3(0, 0, -0.1), B.mat(Color(0.72, 0.56, 0.2)))
-	B.mesh(sword_root, B.box_mesh(Vector3(0.06, 0.06, 0.22)), Vector3(0, 0, 0.05), B.mat(Color(0.32, 0.18, 0.1)))
+	B.mesh(sword_root, B.box_mesh(Vector3(0.055, 0.014, 0.78)), Vector3(0, 0, -0.5), blade_mat)
+	B.mesh(sword_root, B.prism(Vector3(0.055, 0.14, 0.014)), Vector3(0, 0, -0.96), blade_mat, Vector3(-90, 0, 0))
+	B.mesh(sword_root, B.box_mesh(Vector3(0.24, 0.04, 0.045)), Vector3(0, 0, -0.1), B.mat(Color(0.72, 0.56, 0.2)))
+	B.mesh(sword_root, B.cyl(0.02, 0.022, 0.18, 6), Vector3(0, 0, 0.0), leather, Vector3(90, 0, 0))
+	B.mesh(sword_root, B.sphere(0.032, 6, 4), Vector3(0, 0, 0.1), B.mat(Color(0.72, 0.56, 0.2)))
 	B.blob_shadow(self)
 	rest_pose()
 
@@ -232,7 +254,7 @@ func state_charge(move_dir: Vector3) -> void:
 		face_target()
 	elif move_dir.length() > 0.1:
 		facing = move_dir.normalized()
-	sword_root.position = Vector3(0.3, 1.0, 0.1)
+	sword_root.position = Vector3(0.24, 1.0, 0.12)
 	sword_root.rotation_degrees = Vector3(-8, 115, 0)
 	parts.arm_r.rotation.x = 0.6
 	if state_time >= CHARGE_TIME:
@@ -340,14 +362,15 @@ func respawn(pos: Vector3) -> void:
 
 
 func rest_pose() -> void:
-	sword_root.position = Vector3(0.38, 0.86, -0.05)
+	sword_root.position = Vector3(0.24, 0.8, -0.03)
 	sword_root.rotation_degrees = Vector3(-62, 0, 0)
 	parts.arm_r.rotation = Vector3.ZERO
+	parts.forearm_r.rotation.x = 0.35
 
 
 func pose_sword(t: float) -> void:
 	# Sword swings around the chest; arm follows.
-	sword_root.position = Vector3(0, 1.1, 0)
+	sword_root.position = Vector3(0.05, 1.12, -0.12)
 	var e := 1.0 - pow(1.0 - t, 3.0)
 	if spin:
 		sword_root.rotation_degrees = Vector3(0, 90.0 - e * 400.0, 0)
@@ -374,15 +397,29 @@ func animate(delta: float) -> void:
 			var s := sin(anim_t)
 			la.rotation.x = s * 0.7
 			lr.rotation.x = -s * 0.7
+			parts.shin_l.rotation.x = -maxf(0.0, -cos(anim_t)) * 0.9 - 0.08
+			parts.shin_r.rotation.x = -maxf(0.0, cos(anim_t)) * 0.9 - 0.08
 			al.rotation.x = -s * 0.5
+			parts.forearm_l.rotation.x = 0.25 + maxf(0.0, -s) * 0.5
 			parts.body.position.y = -0.85 + abs(cos(anim_t)) * 0.06
 		else:
 			la.rotation.x = lerp(la.rotation.x, 0.0, 10.0 * delta)
 			lr.rotation.x = lerp(lr.rotation.x, 0.0, 10.0 * delta)
 			al.rotation.x = lerp(al.rotation.x, 0.0, 10.0 * delta)
+			parts.shin_l.rotation.x = lerp(parts.shin_l.rotation.x, 0.0, 10.0 * delta)
+			parts.shin_r.rotation.x = lerp(parts.shin_r.rotation.x, 0.0, 10.0 * delta)
+			parts.forearm_l.rotation.x = lerp(parts.forearm_l.rotation.x, 0.15, 10.0 * delta)
 			parts.body.position.y = -0.85 + sin(Time.get_ticks_msec() * 0.003) * 0.015
 		if target != null:
-			al.rotation.x = 1.2   # shield up while locked on
+			al.rotation.x = 0.5   # shield up while locked on
+			parts.forearm_l.rotation.x = 1.3
 	elif state == "attack":
 		la.rotation.x = 0.4
 		lr.rotation.x = -0.3
+		parts.shin_l.rotation.x = -0.2
+		parts.shin_r.rotation.x = -0.4
+	elif state == "roll":
+		la.rotation.x = 1.6
+		lr.rotation.x = 1.3
+		parts.shin_l.rotation.x = -2.0
+		parts.shin_r.rotation.x = -1.8

@@ -42,21 +42,40 @@ func _ready() -> void:
 	var tint := randf_range(-0.05, 0.05)
 	model = Node3D.new()
 	add_child(model)
+	var skin := Color(0.5 + tint, 0.58 + tint, 0.45)
+	var shirt: Color = [Color(0.4, 0.34, 0.27), Color(0.3, 0.33, 0.38), Color(0.45, 0.3, 0.25), Color(0.36, 0.4, 0.3)].pick_random()
 	parts = B.humanoid(model, {
-		"skin": Color(0.47 + tint, 0.56 + tint, 0.42),
-		"shirt": [Color(0.38, 0.33, 0.27), Color(0.3, 0.32, 0.36), Color(0.42, 0.28, 0.24)].pick_random(),
-		"arm": Color(0.47 + tint, 0.56 + tint, 0.42),
-		"pants": Color(0.22, 0.2, 0.2),
-		"hair": Color(0.25, 0.25, 0.22),
-		"boots": Color(0.15, 0.13, 0.12),
-		"eye": Color(1.0, 0.25, 0.15),
+		"skin": skin,
+		"shirt": shirt,
+		"arm": shirt.darkened(0.1),
+		"forearm": skin,
+		"pants": [Color(0.24, 0.22, 0.22), Color(0.3, 0.26, 0.2), Color(0.22, 0.25, 0.3)].pick_random(),
+		"hair": [Color(0.22, 0.22, 0.2), Color(0.35, 0.3, 0.25), Color(0.5, 0.5, 0.48)].pick_random(),
+		"boots": Color(0.17, 0.14, 0.12),
+		"face": "zombie",
+		"glow_eyes": Color(1.0, 0.3, 0.15),
+		"hair_style": ["short", "none", "long", "cropped"].pick_random(),
+		"bulk": randf_range(0.9, 1.1),
 	})
-	# Torn shirt edge and a jaw hanging open
-	B.mesh(parts.body, B.box_mesh(Vector3(0.5, 0.14, 0.3)), Vector3(0.04, 0.76, 0), B.mat(Color(0.3, 0.26, 0.22)), Vector3(0, 0, 8))
-	B.mesh(parts.head, B.box_mesh(Vector3(0.2, 0.05, 0.03)), Vector3(0, 0.08, -0.185), B.mat(Color(0.12, 0.05, 0.05)))
+	# Ragged shirt hem hanging in tatters
+	var rag := B.mat(shirt.darkened(0.15))
+	for i in 7:
+		var a := -PI + TAU * i / 7.0 + randf_range(-0.2, 0.2)
+		var p := Vector3(sin(a) * 0.14, 0.95, -cos(a) * 0.1)
+		B.mesh(parts.body, B.prism(Vector3(0.07, randf_range(0.08, 0.16), 0.02)), p, rag, Vector3(180, rad_to_deg(-a), randf_range(-15, 15)))
+	# Exposed rib shading on some of them
+	if randf() < 0.5:
+		var bone := B.mat(Color(0.82, 0.8, 0.7))
+		for i in 3:
+			B.mesh(parts.body, B.box_mesh(Vector3(0.1, 0.012, 0.02)), Vector3(0.05, 1.12 + i * 0.05, -0.115), bone, Vector3(0, 0, -8))
 	parts.pivot.rotation.x = -0.22
 	parts.arm_l.rotation.x = 1.45
 	parts.arm_r.rotation.x = 1.3
+	parts.forearm_l.rotation.x = -0.25
+	parts.forearm_r.rotation.x = -0.15
+	parts.shin_l.rotation.x = -0.15
+	parts.shin_r.rotation.x = -0.15
+	parts.head.rotation.x = 0.15
 	B.blob_shadow(self, 0.48)
 	model.scale = Vector3.ONE * randf_range(0.95, 1.1)
 
@@ -245,6 +264,8 @@ func animate(delta: float) -> void:
 		var s := sin(anim_t)
 		parts.leg_l.rotation.x = s * 0.45
 		parts.leg_r.rotation.x = -s * 0.45
+		parts.shin_l.rotation.x = -0.15 - maxf(0.0, -cos(anim_t)) * 0.5
+		parts.shin_r.rotation.x = -0.15 - maxf(0.0, cos(anim_t)) * 0.5
 		parts.pivot.rotation.z = s * 0.12
 		parts.head.rotation.z = sin(anim_t * 0.5) * 0.25
 		parts.arm_l.rotation.x = 1.45 + sin(anim_t * 1.3) * 0.12

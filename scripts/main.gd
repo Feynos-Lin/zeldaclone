@@ -445,8 +445,10 @@ func build_cave() -> void:
 
 func spawn_npcs() -> void:
 	add_npc("Captain Orla", Vector3(4.6, 0, 21.0), PI, {
-		"skin": Color(0.78, 0.6, 0.45), "shirt": Color(0.45, 0.2, 0.18), "pants": Color(0.25, 0.22, 0.2),
-		"hair": Color(0.15, 0.1, 0.08), "helm": true,
+		"skin": Color(0.78, 0.6, 0.45), "shirt": Color(0.5, 0.2, 0.17), "pants": Color(0.28, 0.24, 0.22),
+		"hair": Color(0.12, 0.08, 0.06), "helm": true, "hair_style": "bun", "face": "stern",
+		"eye_color": Color(0.35, 0.25, 0.15), "forearm": Color(0.5, 0.2, 0.17), "hand": Color(0.3, 0.2, 0.12),
+		"bulk": 1.05,
 	}, [
 		"Heading out? At this hour?",
 		"Ever since the bell cracked, the dead have been crawling out of Hollow Cave, up past the field.",
@@ -454,24 +456,27 @@ func spawn_npcs() -> void:
 		"Hold your sword arm back to charge a spin. Lock on with Z if they start circling you.",
 	])
 	add_npc("Grandmother Ysel", Vector3(-7.6, 0, 5.2), 0.8, {
-		"skin": Color(0.85, 0.7, 0.6), "shirt": Color(0.32, 0.25, 0.4), "pants": Color(0.3, 0.24, 0.35),
-		"hair": Color(0.85, 0.85, 0.85), "shawl": Color(0.55, 0.42, 0.62),
+		"skin": Color(0.88, 0.74, 0.64), "shirt": Color(0.36, 0.28, 0.44), "pants": Color(0.32, 0.26, 0.38),
+		"hair": Color(0.86, 0.85, 0.84), "shawl": Color(0.58, 0.44, 0.64), "dress": Color(0.3, 0.24, 0.38),
+		"hair_style": "bun", "face": "old", "eye_color": Color(0.4, 0.45, 0.5), "hips": 1.1,
 	}, [
 		"The moon has been wrong for three nights now. Pale as bone, and closer every evening.",
 		"When it rises, the cave breathes out the dead.",
 		"Somebody ought to find out what is waking them. Wrenmoor can't take many more nights like this.",
 	])
 	add_npc("Pip", Vector3(5.5, 0, -1.5), -2.4, {
-		"skin": Color(0.9, 0.74, 0.58), "shirt": Color(0.85, 0.65, 0.2), "pants": Color(0.3, 0.4, 0.55),
-		"hair": Color(0.55, 0.3, 0.12),
+		"skin": Color(0.9, 0.74, 0.6), "shirt": Color(0.86, 0.66, 0.22), "pants": Color(0.3, 0.4, 0.56),
+		"hair": Color(0.62, 0.32, 0.12), "hair_style": "short", "face": "kid", "eye_color": Color(0.3, 0.45, 0.25),
+		"forearm": Color(0.9, 0.74, 0.6), "bulk": 0.9,
 	}, [
 		"Mom says I'm not allowed past the gate.",
 		"Do they really walk like this? *shuffle* *shuffle* Uuuurgh!",
 		"Bring me back a bone shard sometime? Just one. I won't tell anybody.",
 	], true)
 	add_npc("Dorran the Trader", Vector3(7, 0, -4.4), PI, {
-		"skin": Color(0.7, 0.52, 0.38), "shirt": Color(0.3, 0.45, 0.35), "pants": Color(0.35, 0.28, 0.22),
-		"hair": Color(0.1, 0.08, 0.06), "hat": Color(0.45, 0.3, 0.18),
+		"skin": Color(0.66, 0.48, 0.35), "shirt": Color(0.3, 0.46, 0.36), "pants": Color(0.36, 0.28, 0.22),
+		"hair": Color(0.1, 0.08, 0.06), "hat": Color(0.45, 0.3, 0.18), "beard": Color(0.12, 0.09, 0.07),
+		"hair_style": "cropped", "eye_color": Color(0.3, 0.2, 0.12), "apron": Color(0.7, 0.62, 0.48), "bulk": 1.12, "hips": 1.1,
 	}, [
 		"Bone shards! Bring me the shards those things leave behind.",
 		"Grind enough of them down and you get ward-dust. Get me enough, and maybe we seal that cave for good.",

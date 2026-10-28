@@ -9,7 +9,7 @@ var player
 var cam: Camera3D
 var yaw := 0.0
 var pitch := -0.3
-var distance := 6.2
+var distance := 5.0
 var height := 1.5
 var focus := Vector3.ZERO
 var recentering := false
