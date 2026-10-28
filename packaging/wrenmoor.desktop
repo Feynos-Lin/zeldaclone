@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Wrenmoor
+Comment=N64-style action adventure prototype
+Exec=wrenmoor
+Icon=wrenmoor
+Terminal=false
+Categories=Game;ActionGame;AdventureGame;
