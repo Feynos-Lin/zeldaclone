@@ -28,7 +28,7 @@ var face_dir := Vector3(0, 0, -1)
 func _ready() -> void:
 	add_to_group("zombies")
 	collision_layer = 2
-	collision_mask = 1 | 2
+	collision_mask = 1 | 2 | 4
 	var cs := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.38
@@ -54,11 +54,15 @@ func _ready() -> void:
 		"boots": Color(0.17, 0.14, 0.12),
 		"face": "zombie",
 		"glow_eyes": Color(1.0, 0.3, 0.15),
-		"hair_style": ["short", "none", "long", "cropped"].pick_random(),
+		"hair_style": ["stringy", "none", "stringy", "long", "short"].pick_random(),
+		"head_scale": 1.32,
+		"leg": 0.88,
+		"limb": 1.08,
+		"hand_scale": 1.2,
 		"bulk": randf_range(0.9, 1.1),
 	})
 	# Ragged shirt hem hanging in tatters
-	var rag := B.mat(shirt.darkened(0.15))
+	var rag := B.paint_mat(shirt.darkened(0.15), "cloth", 41)
 	for i in 7:
 		var a := -PI + TAU * i / 7.0 + randf_range(-0.2, 0.2)
 		var p := Vector3(sin(a) * 0.14, 0.95, -cos(a) * 0.1)
@@ -127,7 +131,7 @@ func _physics_process(delta: float) -> void:
 	var to_p: Vector3 = player.global_position - global_position
 	to_p.y = 0
 	var dist := to_p.length()
-	var player_ok: bool = player.is_alive() and player.global_position.z > main.ward_z and not main.game_over_active
+	var player_ok: bool = player.is_alive() and not main.in_ward(player.global_position, -0.5) and not main.game_over_active
 	var aggro := 20.0 if main.is_night() else 13.0
 
 	match state:
@@ -190,8 +194,13 @@ func _physics_process(delta: float) -> void:
 				set_state("chase")
 
 	# The ward-stones keep the dead out of Wrenmoor.
-	if global_position.z < main.ward_z + 0.8:
-		velocity.z = maxf(velocity.z, 1.2)
+	var flat := Vector2(global_position.x, global_position.z)
+	if flat.length() < main.ward_radius + 0.8 and flat.length() > 0.01:
+		var out := Vector3(flat.x, 0, flat.y).normalized()
+		var vout := velocity.x * out.x + velocity.z * out.z
+		if vout < 1.2:
+			velocity.x += out.x * (1.2 - vout)
+			velocity.z += out.z * (1.2 - vout)
 
 	move_and_slide()
 	animate(delta)
@@ -212,8 +221,13 @@ func walk(dir: Vector3, spd: float) -> void:
 
 func pick_wander() -> void:
 	var p := global_position + Vector3(randf_range(-9, 9), 0, randf_range(-9, 9))
-	p.x = clampf(p.x, -45.0, 45.0)
-	p.z = clampf(p.z, main.ward_z + 3.0, 104.0)
+	p.x = clampf(p.x, -44.0, 44.0)
+	p.z = clampf(p.z, -40.0, 104.0)
+	var fl := Vector2(p.x, p.z)
+	if fl.length() < main.ward_radius + 3.0:
+		fl = fl.normalized() * (main.ward_radius + 3.0)
+		p.x = fl.x
+		p.z = fl.y
 	wander_target = p
 
 

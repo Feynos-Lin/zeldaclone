@@ -11,10 +11,11 @@ const CameraRigScript = preload("res://scripts/camera_rig.gd")
 const HudScript = preload("res://scripts/hud.gd")
 const TouchScript = preload("res://scripts/touch_controls.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
+const WorldScript = preload("res://scripts/world.gd")
 
 const HOURS_PER_SEC := 1.0 / 20.0      # one in-game hour every 20 seconds
-const SPAWN_POINT := Vector3(10, 0, 114)
-const TOWN_SPAWN := Vector3(0, 0, 10)
+const SPAWN_POINT := Vector3(8, 0, 113)
+const TOWN_SPAWN := Vector3(0, 0, 8)
 
 # Sky keyframes: [hour, sky colour, light energy, ambient energy]
 const SKY_KEYS := [
@@ -29,7 +30,8 @@ const SKY_KEYS := [
 	[24.0, Color(0.04, 0.05, 0.12), 0.22, 0.42],
 ]
 
-var ward_z := 28.0
+var ward_radius := 27.0
+var world_builder
 var world: Node3D
 var player
 var cam_rig
@@ -65,10 +67,8 @@ func _ready() -> void:
 	world = Node3D.new()
 	add_child(world)
 	build_environment()
-	build_ground()
-	build_town()
-	build_field()
-	build_cave()
+	world_builder = WorldScript.new()
+	world_builder.build(self)
 	spawn_npcs()
 
 	player = PlayerScript.new()
@@ -111,7 +111,7 @@ func _ready() -> void:
 		hud.set_hint("WASD move · J / click: sword (hold to spin) · Space: roll / talk · Tab: lock on · Q/E: camera · F11: fullscreen")
 
 	# A few of the dead are already loose in the field.
-	for p in [Vector3(-14, 0, 52), Vector3(16, 0, 64), Vector3(-4, 0, 80)]:
+	for p in [Vector3(-12, 0, 46), Vector3(8, 0, 62), Vector3(-2, 0, 84), Vector3(18, 0, 92)]:
 		spawn_zombie(p, false)
 	update_sky(0.0)
 
@@ -174,8 +174,8 @@ func build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_depth_begin = 16.0
-	env.fog_depth_end = 70.0
+	env.fog_depth_begin = 14.0
+	env.fog_depth_end = 62.0
 	env.fog_depth_curve = 1.0
 	env.fog_density = 1.0
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
@@ -187,305 +187,49 @@ func build_environment() -> void:
 	add_child(sun)
 
 
-func build_ground() -> void:
-	var grass := B.mat(Color(0.38, 0.6, 0.28), B.noise_tex(0.12, "grass", 11), 0.22)
-	B.mesh(world, plane(Vector2(260, 320)), Vector3(0, 0, 40), grass)
-	var ground := StaticBody3D.new()
-	world.add_child(ground)
-	var cs := CollisionShape3D.new()
-	var sh := BoxShape3D.new()
-	sh.size = Vector3(260, 1, 320)
-	cs.shape = sh
-	cs.position = Vector3(0, -0.5, 40)
-	ground.add_child(cs)
-
-
-func plane(size: Vector2) -> PlaneMesh:
-	var p := PlaneMesh.new()
-	p.size = size
-	return p
-
-
-func strip(a: Vector3, b: Vector3, width: float, material: Material, y: float) -> void:
-	var d := b - a
-	var mi := B.mesh(world, plane(Vector2(width, d.length())), (a + b) * 0.5 + Vector3(0, y, 0), material)
-	mi.rotation.y = atan2(d.x, d.z)
-
-
-func build_town() -> void:
-	var cobble := B.mat(Color(0.62, 0.58, 0.52), B.noise_tex(0.1, "cobble", 5), 0.3)
-	B.mesh(world, plane(Vector2(48, 48)), Vector3(0, 0.04, 0), cobble)
-	var wood := B.mat(Color(0.5, 0.35, 0.2), B.noise_tex(0.1, "planks", 3), 0.3)
-	var dark_wood := B.mat(Color(0.32, 0.22, 0.13), B.noise_tex(0.1, "planks", 3), 0.3)
-	var stone := B.mat(Color(0.55, 0.53, 0.5), B.noise_tex(0.12, "bricks", 7), 0.35)
-
-	# Palisade walls with a gate to the north field (+Z).
-	B.solid_box(world, Vector3(49, 3.6, 1), Vector3(0, 1.8, -24.5), wood)
-	B.solid_box(world, Vector3(1, 3.6, 49), Vector3(-24.5, 1.8, 0), wood)
-	B.solid_box(world, Vector3(1, 3.6, 49), Vector3(24.5, 1.8, 0), wood)
-	B.solid_box(world, Vector3(21.5, 3.6, 1), Vector3(-13.75, 1.8, 24.5), wood)
-	B.solid_box(world, Vector3(21.5, 3.6, 1), Vector3(13.75, 1.8, 24.5), wood)
-	for x in range(-24, 25, 3):
-		for side in [[x, -24.5], [-24.5, x], [24.5, x], [x, 24.5]]:
-			if side[1] == 24.5 and absf(side[0]) < 4.0:
-				continue
-			B.mesh(world, B.prism(Vector3(1.0, 0.8, 1.0)), Vector3(side[0], 4.0, side[1]), dark_wood)
-	for gx in [-3.4, 3.4]:
-		B.solid_box(world, Vector3(1.2, 5.4, 1.4), Vector3(gx, 2.7, 24.5), dark_wood)
-		B.mesh(world, B.prism(Vector3(1.4, 1.0, 1.6)), Vector3(gx, 5.9, 24.5), dark_wood)
-	B.mesh(world, B.box_mesh(Vector3(8.2, 0.7, 1.0)), Vector3(0, 5.0, 24.5), dark_wood)
-	B.mesh(world, B.box_mesh(Vector3(3.6, 0.9, 0.12)), Vector3(0, 4.2, 23.9), wood)
-	add_lantern(Vector3(-2.4, 0, 22.6))
-	add_lantern(Vector3(2.4, 0, 22.6))
-
-	# Houses facing the square.
-	var houses := [
-		[-14.0, -15.0, 7.0, 6.0, 4.0, Color(0.88, 0.82, 0.68), Color(0.68, 0.22, 0.18)],
-		[0.0, -18.0, 10.0, 5.0, 5.0, Color(0.78, 0.8, 0.85), Color(0.22, 0.3, 0.52)],
-		[14.0, -15.0, 6.0, 6.0, 4.0, Color(0.85, 0.7, 0.45), Color(0.4, 0.26, 0.16)],
-		[-17.0, 1.0, 6.0, 7.0, 4.0, Color(0.8, 0.74, 0.62), Color(0.3, 0.42, 0.3)],
-		[17.0, 1.0, 6.0, 7.0, 4.5, Color(0.9, 0.85, 0.75), Color(0.62, 0.3, 0.2)],
-		[-15.0, 16.0, 6.0, 5.0, 3.6, Color(0.82, 0.72, 0.58), Color(0.45, 0.25, 0.3)],
-		[15.0, 16.0, 6.0, 5.0, 3.6, Color(0.76, 0.78, 0.7), Color(0.55, 0.2, 0.15)],
-	]
-	for hdef in houses:
-		build_house(hdef[0], hdef[1], hdef[2], hdef[3], hdef[4], hdef[5], hdef[6], stone)
-
-	# Well in the square.
-	B.solid_cylinder(world, 1.3, 1.0, Vector3(-5, 0, 4))
-	B.mesh(world, B.cyl(1.3, 1.4, 1.0, 8), Vector3(-5, 0.5, 4), stone)
-	B.mesh(world, B.cyl(1.0, 1.0, 0.05, 8), Vector3(-5, 0.95, 4), B.glow(Color(0.05, 0.08, 0.15)))
-	for wx in [-1.1, 1.1]:
-		B.mesh(world, B.box_mesh(Vector3(0.18, 2.2, 0.18)), Vector3(-5 + wx, 2.0, 4), dark_wood)
-	B.mesh(world, B.prism(Vector3(3.0, 1.0, 2.0)), Vector3(-5, 3.5, 4), B.mat(Color(0.6, 0.25, 0.2), B.noise_tex(0.1, "bricks", 9)))
-
-	# Market stall.
-	B.solid_box(world, Vector3(3.4, 1.0, 1.4), Vector3(7, 0.5, -6), wood)
-	for sx in [-1.5, 1.5]:
-		B.mesh(world, B.box_mesh(Vector3(0.15, 2.6, 0.15)), Vector3(7 + sx, 1.3, -6.6), dark_wood)
-	var awning_mat := B.mat(Color(0.75, 0.62, 0.3))
-	B.mesh(world, B.box_mesh(Vector3(3.8, 0.1, 2.0)), Vector3(7, 2.6, -6.2), awning_mat, Vector3(-12, 0, 0))
-	for i in 4:
-		B.mesh(world, B.sphere(0.18, 6, 3), Vector3(5.9 + i * 0.7, 1.15, -6), B.mat([Color(0.8, 0.2, 0.15), Color(0.9, 0.6, 0.1), Color(0.4, 0.6, 0.2), Color(0.6, 0.3, 0.5)][i]))
-
-	# Crates and barrels.
-	for c in [Vector3(9.5, 0, -7.5), Vector3(10.3, 0, -6.4), Vector3(-20, 0, -8), Vector3(20, 0, 10), Vector3(-8, 0, 21)]:
-		B.solid_box(world, Vector3(1, 1, 1), c + Vector3(0, 0.5, 0), wood, rng.randf_range(0, 40))
-	for b in [Vector3(-20.5, 0, -6.5), Vector3(19, 0, 12), Vector3(-9.3, 0, 21.4), Vector3(9, 0, 20.5)]:
-		B.solid_cylinder(world, 0.45, 1.1, b)
-		B.mesh(world, B.cyl(0.42, 0.45, 1.1, 8), b + Vector3(0, 0.55, 0), dark_wood)
-
-	add_lantern(Vector3(-4, 0, -6))
-	add_lantern(Vector3(4, 0, 8))
-	add_lantern(Vector3(-11, 0, 10))
-	# A gnarled old tree in the square.
-	build_tree(Vector3(8, 0, 6), 1.25)
-
-
-func build_house(x: float, z: float, w: float, d: float, h: float, wall_col: Color, roof_col: Color, stone: Material) -> void:
-	var root := Node3D.new()
-	root.position = Vector3(x, 0, z)
-	root.rotation.y = atan2(-x, -z)
-	world.add_child(root)
-	var plaster := B.mat(wall_col, B.noise_tex(0.06, "", 21), 0.3)
-	B.solid_box(root, Vector3(w, h, d), Vector3(0, h * 0.5, 0), plaster)
-	B.mesh(root, B.box_mesh(Vector3(w + 0.1, 0.7, d + 0.1)), Vector3(0, 0.35, 0), stone)
-	var roof := B.mat(roof_col, B.noise_tex(0.1, "bricks", 9), 0.5)
-	B.mesh(root, B.prism(Vector3(w + 0.8, 2.0, d + 0.8)), Vector3(0, h + 1.0, 0), roof, Vector3(0, 90, 0))
-	var trim := B.mat(Color(0.3, 0.2, 0.12))
-	B.mesh(root, B.box_mesh(Vector3(1.3, 2.1, 0.12)), Vector3(0, 1.05, d * 0.5 + 0.05), trim)
-	var win := B.glow(Color(1.0, 0.82, 0.45))
-	window_mats.append(win)
-	for wx in [-w * 0.3, w * 0.3]:
-		B.mesh(root, B.box_mesh(Vector3(0.9, 0.8, 0.1)), Vector3(wx, h * 0.58, d * 0.5 + 0.04), win)
-		B.mesh(root, B.box_mesh(Vector3(1.1, 0.12, 0.16)), Vector3(wx, h * 0.58 - 0.46, d * 0.5 + 0.06), trim)
-	B.mesh(root, B.box_mesh(Vector3(0.7, 1.6, 0.7)), Vector3(w * 0.3, h + 1.6, -d * 0.2), stone)
-
-
-func build_tree(p: Vector3, s: float = 1.0) -> void:
-	var trunk := B.mat(Color(0.4, 0.28, 0.17))
-	var leaf := B.mat(Color(0.18 + rng.randf_range(-0.03, 0.03), 0.38 + rng.randf_range(-0.05, 0.05), 0.2), B.noise_tex(0.15, "grass", 13), 0.5)
-	var root := Node3D.new()
-	root.position = p
-	root.scale = Vector3.ONE * s
-	world.add_child(root)
-	B.mesh(root, B.cyl(0.22, 0.34, 2.2, 6), Vector3(0, 1.1, 0), trunk)
-	B.mesh(root, B.cyl(0.0, 1.9, 2.6, 7), Vector3(0, 3.0, 0), leaf)
-	B.mesh(root, B.cyl(0.0, 1.4, 2.1, 7), Vector3(0, 4.3, 0), leaf, Vector3(0, 25, 0))
-	B.solid_cylinder(world, 0.4 * s, 3.0, p)
-
-
-func add_lantern(p: Vector3) -> void:
-	var post := B.mat(Color(0.18, 0.16, 0.15))
-	B.solid_cylinder(world, 0.15, 2.8, p)
-	B.mesh(world, B.cyl(0.08, 0.1, 2.8, 6), p + Vector3(0, 1.4, 0), post)
-	B.mesh(world, B.box_mesh(Vector3(0.4, 0.45, 0.4)), p + Vector3(0, 2.95, 0), B.glow(Color(1.0, 0.75, 0.35)))
-	B.mesh(world, B.prism(Vector3(0.55, 0.3, 0.55)), p + Vector3(0, 3.33, 0), post)
-	var light := OmniLight3D.new()
-	light.position = p + Vector3(0, 2.9, 0)
-	light.light_color = Color(1.0, 0.72, 0.4)
-	light.omni_range = 9.0
-	light.omni_attenuation = 1.2
-	light.shadow_enabled = false
-	world.add_child(light)
-	lanterns.append([light, 1.6, 0.05])
-
-
-func build_field() -> void:
-	var dirt := B.mat(Color(0.55, 0.45, 0.32), B.noise_tex(0.12, "", 17), 0.3)
-	strip(Vector3(0, 0, 20), Vector3(0, 0, 42), 4.0, dirt, 0.06)
-	strip(Vector3(0, 0, 41), Vector3(10, 0, 70), 4.0, dirt, 0.065)
-	strip(Vector3(10, 0, 69), Vector3(10, 0, 112), 4.0, dirt, 0.07)
-
-	var rock := B.mat(Color(0.5, 0.47, 0.44), B.noise_tex(0.14, "", 31), 0.18)
-	var cliff := B.mat(Color(0.46, 0.42, 0.38), B.noise_tex(0.16, "", 33), 0.15)
-
-	# Cliffs boxing in the town's flanks and the whole field.
-	for sx in [-1, 1]:
-		B.solid_box(world, Vector3(30, 9, 60), Vector3(sx * 40, 4.5, -3), cliff)
-		var z := 28.0
-		while z < 116.0:
-			var h := rng.randf_range(8.0, 15.0)
-			B.solid_box(world, Vector3(7, h, 8.5), Vector3(sx * rng.randf_range(52.5, 54.0), h * 0.5, z), cliff, rng.randf_range(-6, 6))
-			z += 8.0
-		B.solid_box(world, Vector3(28, 11, 6), Vector3(sx * 39, 5.5, 27), cliff)
-	B.solid_box(world, Vector3(60, 10, 6), Vector3(0, 5, -31), cliff)
-
-	# Ward-stones: the line the dead will not cross.
-	var ward_stone := B.mat(Color(0.6, 0.6, 0.64), B.noise_tex(0.1, "", 41), 0.4)
-	var rune := B.glow(Color(0.45, 0.95, 1.0))
-	var wx := -22.0
-	while wx <= 22.0:
-		if absf(wx) > 2.5:
-			B.solid_cylinder(world, 0.4, 1.4, Vector3(wx, 0, ward_z - 0.5))
-			B.mesh(world, B.cyl(0.32, 0.42, 1.4, 5), Vector3(wx, 0.7, ward_z - 0.5), ward_stone)
-			B.mesh(world, B.box_mesh(Vector3(0.2, 0.35, 0.05)), Vector3(wx, 0.85, ward_z - 0.12), rune)
-		wx += 4.4
-
-	# Trees and boulders scattered across the field, kept off the path.
-	var placed := 0
-	var tries := 0
-	while placed < 46 and tries < 600:
-		tries += 1
-		var p := Vector3(rng.randf_range(-46, 46), 0, rng.randf_range(32, 100))
-		if dist_to_path(p) < 4.5:
-			continue
-		if p.distance_to(Vector3(10, 0, 106)) < 11.0:
-			continue
-		build_tree(p, rng.randf_range(0.85, 1.35))
-		placed += 1
-	for i in 18:
-		var p := Vector3(rng.randf_range(-45, 45), 0, rng.randf_range(32, 104))
-		if dist_to_path(p) < 3.5:
-			continue
-		var s := rng.randf_range(0.5, 1.4)
-		var r := B.mesh(world, B.sphere(1.0, 6, 4), p + Vector3(0, s * 0.35, 0), rock)
-		r.scale = Vector3(s * 1.3, s * 0.8, s)
-		r.rotation.y = rng.randf() * TAU
-		B.solid_cylinder(world, s * 1.0, s * 0.9, p)
-
-	# Old fence posts and grave markers hinting at what's ahead.
-	var grave := B.mat(Color(0.52, 0.52, 0.55), B.noise_tex(0.1, "", 43), 0.4)
-	for g in [Vector3(-8, 0, 88), Vector3(-6, 0, 90), Vector3(-9.5, 0, 92), Vector3(-5, 0, 94), Vector3(22, 0, 90), Vector3(24, 0, 93)]:
-		B.mesh(world, B.box_mesh(Vector3(0.7, 1.0, 0.2)), g + Vector3(0, 0.5, 0), grave, Vector3(rng.randf_range(-12, 12), rng.randf_range(-20, 20), 0))
-		B.mesh(world, B.box_mesh(Vector3(0.8, 0.12, 1.6)), g + Vector3(0, 0.06, 0.9), B.mat(Color(0.35, 0.28, 0.2)))
-
-
-func dist_to_path(p: Vector3) -> float:
-	var pts := [Vector3(0, 0, 20), Vector3(0, 0, 42), Vector3(10, 0, 70), Vector3(10, 0, 112)]
-	var best := 1e9
-	for i in pts.size() - 1:
-		var a: Vector3 = pts[i]
-		var b: Vector3 = pts[i + 1]
-		var ab := b - a
-		var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
-		best = minf(best, p.distance_to(a + ab * t))
-	return best
-
-
-func build_cave() -> void:
-	var cliff := B.mat(Color(0.42, 0.38, 0.36), B.noise_tex(0.16, "", 35), 0.15)
-	var dark := B.glow(Color(0.01, 0.01, 0.02))
-	# The cliff face, with a black mouth at x = 10.
-	B.solid_box(world, Vector3(63, 15, 4), Vector3(-24.5, 7.5, 110), cliff)
-	B.solid_box(world, Vector3(43, 15, 4), Vector3(34.5, 7.5, 110), cliff)
-	B.solid_box(world, Vector3(6.5, 10, 4), Vector3(10, 10, 110), cliff)
-	B.solid_box(world, Vector3(1, 8, 8), Vector3(6.5, 4, 116), dark)
-	B.solid_box(world, Vector3(1, 8, 8), Vector3(13.5, 4, 116), dark)
-	B.solid_box(world, Vector3(8, 1, 8), Vector3(10, 5.5, 116), dark)
-	B.solid_box(world, Vector3(8, 8, 1), Vector3(10, 4, 120), dark)
-	B.mesh(world, plane(Vector2(7, 8)), Vector3(10, 0.08, 115.5), dark)
-	# Jagged rocks around the mouth like teeth.
-	var tooth := B.mat(Color(0.36, 0.33, 0.32), B.noise_tex(0.16, "", 35), 0.3)
-	for t in [[7.6, 4.6, 0.0], [9.0, 4.8, 0.0], [10.6, 4.7, 0.0], [12.2, 4.6, 0.0]]:
-		B.mesh(world, B.prism(Vector3(0.9, 1.3, 0.8)), Vector3(t[0], t[1], 107.9), tooth, Vector3(180, 0, 0))
-	for r in [Vector3(4, 0, 106.5), Vector3(16, 0, 106.8), Vector3(3, 0, 104)]:
-		var m := B.mesh(world, B.sphere(1.3, 6, 4), r + Vector3(0, 0.6, 0), tooth)
-		m.scale = Vector3(1.2, 0.9, 1.0)
-		B.solid_cylinder(world, 1.3, 1.2, r)
-	# Scattered bones.
-	var bone := B.mat(Color(0.88, 0.86, 0.76))
-	for i in 14:
-		var p := Vector3(rng.randf_range(5, 15), 0.06, rng.randf_range(99, 107))
-		B.mesh(world, B.box_mesh(Vector3(0.08, 0.08, rng.randf_range(0.3, 0.6))), p, bone, Vector3(0, rng.randf() * 360.0, 0))
-	B.mesh(world, B.box_mesh(Vector3(0.3, 0.3, 0.3)), Vector3(13, 0.15, 103), bone, Vector3(0, 30, 0))
-	# Torches flanking the cave.
-	for tx in [5.5, 14.5]:
-		var p := Vector3(tx, 0, 106.6)
-		B.solid_cylinder(world, 0.15, 2.2, p)
-		B.mesh(world, B.cyl(0.08, 0.12, 2.2, 6), p + Vector3(0, 1.1, 0), B.mat(Color(0.3, 0.2, 0.12)))
-		B.mesh(world, B.prism(Vector3(0.35, 0.6, 0.35)), p + Vector3(0, 2.5, 0), B.glow(Color(1.0, 0.55, 0.15)))
-		var light := OmniLight3D.new()
-		light.position = p + Vector3(0, 2.6, -0.5)
-		light.light_color = Color(1.0, 0.5, 0.2)
-		light.omni_range = 10.0
-		world.add_child(light)
-		lanterns.append([light, 2.0, 0.35])
-
-
 func spawn_npcs() -> void:
-	add_npc("Captain Orla", Vector3(4.6, 0, 21.0), PI, {
+	add_npc("Captain Orla", Vector3(3.4, 0, 19.0), PI, {
 		"skin": Color(0.78, 0.6, 0.45), "shirt": Color(0.5, 0.2, 0.17), "pants": Color(0.28, 0.24, 0.22),
-		"hair": Color(0.12, 0.08, 0.06), "helm": true, "hair_style": "bun", "face": "stern",
+		"hair": Color(0.12, 0.08, 0.06), "helm": true, "hair_style": "bun", "face": "stern", "head_scale": 1.42, "leg": 0.84, "limb": 1.15, "hand_scale": 1.2,
 		"eye_color": Color(0.35, 0.25, 0.15), "forearm": Color(0.5, 0.2, 0.17), "hand": Color(0.3, 0.2, 0.12),
 		"bulk": 1.05,
 	}, [
 		"Heading out? At this hour?",
-		"Ever since the bell cracked, the dead have been crawling out of Hollow Cave, up past the field.",
-		"The ward-stones beyond the gate hold them back. Out in the field, though... you're on your own.",
+		"Ever since the bell cracked, the dead have been crawling out of Hollow Cave, up the trail through the woods.",
+		"The ward-stones around the village hold them back. Out in the trees, though... you're on your own.",
 		"Hold your sword arm back to charge a spin. Lock on with Z if they start circling you.",
 	])
-	add_npc("Grandmother Ysel", Vector3(-7.6, 0, 5.2), 0.8, {
+	add_npc("Grandmother Ysel", Vector3(8.0, 0, 3.6), 1.1, {
 		"skin": Color(0.88, 0.74, 0.64), "shirt": Color(0.36, 0.28, 0.44), "pants": Color(0.32, 0.26, 0.38),
 		"hair": Color(0.86, 0.85, 0.84), "shawl": Color(0.58, 0.44, 0.64), "dress": Color(0.3, 0.24, 0.38),
-		"hair_style": "bun", "face": "old", "eye_color": Color(0.4, 0.45, 0.5), "hips": 1.1,
+		"hair_style": "bun", "face": "old", "eye_color": Color(0.35, 0.4, 0.45), "hips": 1.1, "head_scale": 1.45, "leg": 0.8, "limb": 1.1, "hand_scale": 1.15,
 	}, [
 		"The moon has been wrong for three nights now. Pale as bone, and closer every evening.",
 		"When it rises, the cave breathes out the dead.",
 		"Somebody ought to find out what is waking them. Wrenmoor can't take many more nights like this.",
 	])
-	add_npc("Pip", Vector3(5.5, 0, -1.5), -2.4, {
+	add_npc("Pip", Vector3(-1.2, 0, -1.6), 0.4, {
 		"skin": Color(0.9, 0.74, 0.6), "shirt": Color(0.86, 0.66, 0.22), "pants": Color(0.3, 0.4, 0.56),
-		"hair": Color(0.62, 0.32, 0.12), "hair_style": "short", "face": "kid", "eye_color": Color(0.3, 0.45, 0.25),
+		"hair": Color(0.66, 0.34, 0.13), "hair_style": "short", "face": "kid", "eye_color": Color(0.2, 0.3, 0.18), "smudge": true, "leg": 0.76, "limb": 1.2, "hand_scale": 1.3, "baggy": 1.15,
 		"forearm": Color(0.9, 0.74, 0.6), "bulk": 0.9,
 	}, [
 		"Mom says I'm not allowed past the gate.",
 		"Do they really walk like this? *shuffle* *shuffle* Uuuurgh!",
 		"Bring me back a bone shard sometime? Just one. I won't tell anybody.",
 	], true)
-	add_npc("Dorran the Trader", Vector3(7, 0, -4.4), PI, {
+	add_npc("Dorran the Trader", Vector3(10, 0, -9.0), PI, {
 		"skin": Color(0.66, 0.48, 0.35), "shirt": Color(0.3, 0.46, 0.36), "pants": Color(0.36, 0.28, 0.22),
 		"hair": Color(0.1, 0.08, 0.06), "hat": Color(0.45, 0.3, 0.18), "beard": Color(0.12, 0.09, 0.07),
-		"hair_style": "cropped", "eye_color": Color(0.3, 0.2, 0.12), "apron": Color(0.7, 0.62, 0.48), "bulk": 1.12, "hips": 1.1,
+		"hair_style": "short", "eye_color": Color(0.2, 0.14, 0.1), "head_scale": 1.4, "cuffs": true, "leg": 0.82, "limb": 1.2, "hand_scale": 1.25, "apron": Color(0.7, 0.62, 0.48), "bulk": 1.12, "hips": 1.1,
 	}, [
 		"Bone shards! Bring me the shards those things leave behind.",
 		"Grind enough of them down and you get ward-dust. Get me enough, and maybe we seal that cave for good.",
 	])
-	add_sign("Signpost", Vector3(4.2, 0, 26.6), PI, [
-		"WRENMOOR GATE. Beyond the ward-stones: the Hollow Field.",
+	add_sign("Signpost", Vector3(3.2, 0, 23.5), 0.0, [
+		"WRENMOOR. North trail: Hollow Cave. West road: closed, tree down.",
 		"Scratched underneath: THEY ONLY COME OUT AT NIGHT. MOSTLY.",
 	])
-	add_sign("Weathered sign", Vector3(16.5, 0, 101.5), PI * 0.85, [
+	add_sign("Weathered sign", Vector3(14.5, 0, 90.0), 0.3, [
 		"HOLLOW CAVE.",
 		"The rest of the sign has been clawed away.",
 		"(This is as far as the prototype goes... for now.)",
@@ -524,6 +268,10 @@ func spawn_zombie(p: Vector3, emerging: bool = true) -> void:
 	if not emerging:
 		z.state = "wander"
 	world.add_child(z)
+
+
+func in_ward(p: Vector3, margin: float = 0.0) -> bool:
+	return Vector2(p.x, p.z).length() < ward_radius + margin
 
 
 func is_night() -> bool:
@@ -642,7 +390,7 @@ func respawn() -> void:
 	game_over_active = false
 	hud.show_game_over(false, touch.visible)
 	for z in get_tree().get_nodes_in_group("zombies"):
-		if z.global_position.z < 50.0:
+		if Vector2(z.global_position.x, z.global_position.z).length() < 45.0:
 			z.queue_free()
 	player.respawn(TOWN_SPAWN)
 	cam_rig.yaw = PI
