@@ -180,11 +180,23 @@ func build_hero() -> void:
 	for n in hero.get_children():
 		if n is MeshInstance3D:
 			n.visible = false     # blob shadow; the studio has real shadows
-	pose_nervous()
+	pose_stand()
 	hero.attach_gear()
 
 
-## Nervous stance: knees bent and apart, fists raised near the chest,
+## Relaxed standing pose like the character art: arms loose at his sides,
+## turned a little toward the camera.
+func pose_stand() -> void:
+	var p: Dictionary = hero.parts
+	hero.model.rotation.y = PI - 0.3
+	p.arm_l.basis = Basis.from_euler(Vector3(0.05, 0.0, -0.08))
+	p.arm_r.basis = Basis.from_euler(Vector3(0.05, 0.0, 0.08))
+	p.forearm_l.rotation = Vector3(0.15, 0.0, 0.0)
+	p.forearm_r.rotation = Vector3(0.15, 0.0, 0.0)
+	p.head.rotation = Vector3(0.0, -0.08, 0.0)
+
+
+## Nervous stance (the first character sheet): knees bent and apart, fists raised near the chest,
 ## shoulders hunched, head tipped down and turned off to his right.
 func pose_nervous() -> void:
 	var p: Dictionary = hero.parts

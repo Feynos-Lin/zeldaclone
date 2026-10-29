@@ -18,6 +18,7 @@ var target_basis: Array = []     # Basis, bone rotation in the rest pose
 var rest_inv: Array = []         # Transform3D, inverse of each part's rest transform (model space)
 var cur_basis: Array = []
 var cur_pos: Array = []
+var hand_bind := {}
 
 
 static func available() -> bool:
@@ -47,21 +48,20 @@ func setup(p_model: Node3D, p_parts: Dictionary) -> void:
 		cur_basis.append(Basis())
 		cur_pos.append(bp)
 		skeleton.set_bone_rest(i, Transform3D())
+	hand_bind = {"l": _v(rig.hand_l.bind), "r": _v(rig.hand_r.bind)}
 	mesh_instance = MeshInstance3D.new()
 	mesh_instance.name = "HeroMesh"
 	mesh_instance.mesh = mesh
 	mesh_instance.skin = skin
 	skeleton.add_child(mesh_instance)
 	mesh_instance.skeleton = NodePath("..")
-	# The sculpt replaces the procedural body; weapons stay.
+	# The sculpt replaces the procedural body; the sword and buckler stay.
 	_strip(model)
-	# The animated arms hang from the sculpt's shoulders.
+	# Line the rig's shoulders up with the sculpt's so their swings match.
 	for side in ["l", "r"]:
 		var sh: Node3D = parts["arm_" + side]
 		var body_x := _part_xform("body")
 		sh.position = body_x.affine_inverse() * (target_pos[names.find("arm_" + side)] as Vector3)
-	_thicken(parts.arm_l)
-	_thicken(parts.arm_r)
 	capture_rest()
 	update()
 
@@ -72,23 +72,13 @@ func _v(a: Array) -> Vector3:
 
 func _strip(n: Node) -> void:
 	for ch in n.get_children():
-		if ch == skeleton or ch == parts.arm_l or ch == parts.arm_r:
+		if ch == skeleton or ch.name == "Sword" or ch.name == "Shield":
 			continue
 		if ch is MeshInstance3D:
 			n.remove_child(ch)
 			ch.queue_free()
 		else:
 			_strip(ch)
-
-
-## The sculpt has chunkier, baggier sleeves than the stock rig.
-func _thicken(n: Node) -> void:
-	for ch in n.get_children():
-		if ch.name == "Sword" or ch.name == "Shield":
-			continue
-		if ch is MeshInstance3D:
-			(ch as MeshInstance3D).scale *= Vector3(1.2, 1.0, 1.2)
-		_thicken(ch)
 
 
 func _part_xform(name: String) -> Transform3D:
@@ -124,3 +114,15 @@ func update() -> void:
 		cur_basis[i] = b
 		cur_pos[i] = pos
 		skeleton.set_bone_pose(i, Transform3D(b, pos))
+
+
+## Palm of the sculpt's hand in world space ("l" or "r").
+func hand_global(side: String) -> Vector3:
+	var i := names.find("forearm_" + side)
+	var local: Vector3 = (cur_pos[i] as Vector3) + (cur_basis[i] as Basis) * ((hand_bind[side] as Vector3) - (bind_pos[i] as Vector3))
+	return skeleton.global_transform * local
+
+
+## Elbow of the sculpt in world space.
+func elbow_global(side: String) -> Vector3:
+	return skeleton.global_transform * (cur_pos[names.find("forearm_" + side)] as Vector3)

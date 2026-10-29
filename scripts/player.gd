@@ -150,10 +150,17 @@ func _ready() -> void:
 		attach_gear()
 
 
-## Moves the sculpted body to match the animated rig.
+## Moves the sculpted body to match the animated rig, sword in his right
+## hand and buckler on his left forearm.
 func attach_gear() -> void:
-	if skin != null:
-		skin.update()
+	if skin == null:
+		return
+	skin.update()
+	sword_root.global_position = skin.hand_global("r")
+	var fa: Node3D = parts.forearm_l
+	shield_node.position = Vector3(-0.065, -0.13, 0)
+	var offset := shield_node.global_position - fa.global_transform * Vector3(0, -0.13, 0)
+	shield_node.global_position = skin.elbow_global("l").lerp(skin.hand_global("l"), 0.45) + offset
 
 
 func is_alive() -> bool:
