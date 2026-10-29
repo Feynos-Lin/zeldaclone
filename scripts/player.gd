@@ -1,6 +1,7 @@
 extends CharacterBody3D
 ## The hero: camera-relative movement, 3-hit sword combo, charged spin attack,
-## dodge roll with invincibility frames, and lock-on targeting.
+## dodge roll with invincibility frames, jumping, a raised shield that blocks
+## blows from the front, and lock-on targeting.
 
 const B = preload("res://scripts/build.gd")
 const HeroSkin = preload("res://scripts/hero_skin.gd")
@@ -10,6 +11,8 @@ const ROLL_SPEED := 10.5
 const ROLL_TIME := 0.45
 const GRAVITY := 24.0
 const CHARGE_TIME := 0.7
+const JUMP_SPEED := 6.4
+const SHIELD_SPEED := 2.4
 
 var main
 var cam_rig
@@ -35,6 +38,11 @@ var knock := Vector3.ZERO
 var roll_dir := Vector3.ZERO
 var target = null
 var anim_t := 0.0
+var shielding := false
+var shield_amt := 0.0       # 0 lowered .. 1 raised, eased
+var was_on_floor := true
+var air_time := 0.0
+var land_dip := 0.0
 
 # Sword-arm poses: [arm direction, blade direction, torso twist, elbow bend, blade flat hint].
 # Directions are in the hero's own space: -Z is forward, +X his right, +Y up.
@@ -150,6 +158,51 @@ func _ready() -> void:
 		attach_gear()
 
 
+## Shield arm, jump tuck and landing squash, layered over the main animation.
+func animate_extra(delta: float) -> void:
+	shield_amt = move_toward(shield_amt, 1.0 if shielding else 0.0, delta * 9.0)
+	var e := shield_amt * shield_amt * (3.0 - 2.0 * shield_amt)
+	if e > 0.0:
+		var al: Node3D = parts.arm_l
+		al.rotation = al.rotation.lerp(Vector3(1.2, 0.0, 0.45), e)
+		parts.forearm_l.rotation = parts.forearm_l.rotation.lerp(Vector3(0.95, 0.0, 0.25), e)
+		parts.body.rotation.y = lerpf(parts.body.rotation.y, -0.25, e)
+		parts.leg_l.rotation.x = lerpf(parts.leg_l.rotation.x, -0.25, e * 0.6)
+		parts.leg_r.rotation.x = lerpf(parts.leg_r.rotation.x, 0.3, e * 0.6)
+	var airborne := not is_on_floor() and air_time > 0.06 and state in ["move", "attack", "charge"]
+	if airborne:
+		var rising := clampf(velocity.y / JUMP_SPEED, -1.0, 1.0)
+		var tuck := 0.6 + 0.4 * rising
+		parts.leg_l.rotation.x = lerpf(parts.leg_l.rotation.x, 0.9 * tuck, minf(1.0, 18.0 * delta))
+		parts.leg_r.rotation.x = lerpf(parts.leg_r.rotation.x, 0.2 * tuck, minf(1.0, 18.0 * delta))
+		parts.shin_l.rotation.x = lerpf(parts.shin_l.rotation.x, -1.3 * tuck, minf(1.0, 18.0 * delta))
+		parts.shin_r.rotation.x = lerpf(parts.shin_r.rotation.x, -0.9 * tuck, minf(1.0, 18.0 * delta))
+		if e < 0.5 and state == "move":
+			parts.arm_l.rotation.z = lerpf(parts.arm_l.rotation.z, -0.6, minf(1.0, 12.0 * delta))
+	elif state == "move" and e < 0.5:
+		parts.arm_l.rotation.z = lerpf(parts.arm_l.rotation.z, 0.0, minf(1.0, 12.0 * delta))
+	land_dip = move_toward(land_dip, 0.0, delta * 0.6)
+	if state == "move" or state == "charge":
+		parts.pivot.position.y = 0.85 - land_dip
+		parts.shin_l.rotation.x -= land_dip * 4.0
+		parts.shin_r.rotation.x -= land_dip * 4.0
+		parts.leg_l.rotation.x += land_dip * 2.0
+		parts.leg_r.rotation.x += land_dip * 2.0
+
+
+## With the shield raised, square the buckler up in front of his chest.
+func place_shield() -> void:
+	var e := shield_amt * shield_amt * (3.0 - 2.0 * shield_amt)
+	shield_node.rotation_degrees = Vector3(0, 0, 90)
+	if e <= 0.0:
+		return
+	var base: Basis = shield_node.global_basis.orthonormalized()
+	var front: Basis = (model.global_basis.orthonormalized() * Basis(Vector3.RIGHT, -PI * 0.5) * Basis(Vector3.UP, 0.3))
+	shield_node.global_basis = base.slerp(front, e)
+	var chest: Vector3 = model.global_transform * Vector3(-0.1, 0.98, -0.5)
+	shield_node.global_position = shield_node.global_position.lerp(chest, e * 0.85)
+
+
 ## Moves the sculpted body to match the animated rig, sword in his right
 ## hand and buckler on his left forearm.
 func attach_gear() -> void:
@@ -172,10 +225,17 @@ func _physics_process(delta: float) -> void:
 	invuln = maxf(invuln - delta, 0.0)
 	model.visible = state == "dead" or invuln <= 0.0 or int(invuln * 20.0) % 2 == 0
 
-	if is_on_floor():
+	var on_floor := is_on_floor()
+	if on_floor:
+		if not was_on_floor and air_time > 0.15:
+			main.sfx.play("land", 0.9 + randf() * 0.2)
+			land_dip = minf(air_time * 0.25, 0.14)
 		velocity.y = -1.0
+		air_time = 0.0
 	else:
 		velocity.y -= GRAVITY * delta
+		air_time += delta
+	was_on_floor = on_floor
 
 	var frozen: bool = main.dialog_active or main.game_over_active
 	var input_vec := Vector2.ZERO
@@ -208,8 +268,12 @@ func _physics_process(delta: float) -> void:
 			p.position.y = lerp(p.position.y, 0.25, 6.0 * delta)
 
 	move_and_slide()
+	if state != "move":
+		shielding = false
 	animate(delta)
+	animate_extra(delta)
 	attach_gear()
+	place_shield()
 
 
 func cam_relative(v: Vector2) -> Vector3:
@@ -251,17 +315,36 @@ func update_target(frozen: bool) -> void:
 
 
 func state_move(move_dir: Vector3, frozen: bool) -> void:
+	shielding = not frozen and Input.is_action_pressed("shield")
 	var spd := SPEED * (0.8 if target != null else 1.0)
+	if shielding:
+		spd = SHIELD_SPEED
 	velocity.x = move_dir.x * spd
 	velocity.z = move_dir.z * spd
 	if target != null:
 		face_target()
-	elif move_dir.length() > 0.1:
-		facing = move_dir.normalized()
+	elif move_dir.length() > 0.1 and not shielding:
+		facing = move_dir.normalized()   # with the shield up he keeps facing forward and sidesteps
 	if frozen:
 		return
+	var grounded := is_on_floor() or air_time < 0.1
+	if Input.is_action_just_pressed("jump"):
+		var near = main.nearest_npc(global_position, 2.6)
+		if near != null and grounded and main.dialog_cooldown <= 0.0:
+			velocity.x = 0.0
+			velocity.z = 0.0
+			main.start_dialog(near)
+		elif grounded:
+			velocity.y = JUMP_SPEED
+			air_time = 0.1
+			was_on_floor = false
+			main.sfx.play("jump")
+		return
 	if Input.is_action_just_pressed("attack"):
+		shielding = false
 		start_attack(0, false)
+	elif Input.is_action_just_pressed("action") and not grounded:
+		pass   # no rolling in mid-air
 	elif Input.is_action_just_pressed("action"):
 		var npc = main.nearest_npc(global_position, 2.6)
 		if npc != null and main.dialog_cooldown > 0.0:
@@ -277,6 +360,7 @@ func state_move(move_dir: Vector3, frozen: bool) -> void:
 
 
 func start_attack(c: int, is_spin: bool) -> void:
+	shielding = false
 	state = "attack"
 	state_time = 0.0
 	combo = c
@@ -336,6 +420,7 @@ func state_charge(move_dir: Vector3) -> void:
 
 
 func start_roll(dir: Vector3) -> void:
+	shielding = false
 	state = "roll"
 	state_time = 0.0
 	roll_dir = dir
@@ -384,11 +469,26 @@ func do_hit() -> void:
 		main.controls.rumble(0.35, 0.2 if not spin else 0.5, 0.1)
 
 
-func take_damage(amount: int, push_dir: Vector3) -> void:
+## Returns true when the blow was caught on the shield.
+func take_damage(amount: int, push_dir: Vector3) -> bool:
 	if state == "dead" or invuln > 0.0:
-		return
+		return false
 	if state == "roll" and state_time < 0.35:
-		return
+		return false
+	var from_dir := -push_dir
+	from_dir.y = 0
+	if state == "move" and shielding and shield_amt > 0.6 and from_dir.length() > 0.01 and facing.dot(from_dir.normalized()) > 0.2:
+		knock = push_dir.normalized() * 3.0
+		knock.y = 0
+		velocity.x = knock.x
+		velocity.z = knock.z
+		invuln = 0.2
+		main.sfx.play("block")
+		main.cam_rig.shake(0.08)
+		main.controls.rumble(0.3, 0.25, 0.12)
+		main.spawn_flash(shield_node.global_position)
+		return true
+	shielding = false
 	hp = maxi(hp - amount, 0)
 	invuln = 1.2
 	knock = push_dir.normalized() * 7.0
@@ -407,6 +507,7 @@ func take_damage(amount: int, push_dir: Vector3) -> void:
 	else:
 		state = "hurt"
 		state_time = 0.0
+	return false
 
 
 func heal(amount: int) -> void:

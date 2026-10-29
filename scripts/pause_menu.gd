@@ -59,7 +59,7 @@ func _process(delta: float) -> void:
 		if Input.is_action_just_pressed("move_back"):
 			selected = posmod(selected + 1, items.size())
 			main.sfx.play("blip")
-		if Input.is_action_just_pressed("action"):
+		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("jump"):
 			choose(selected)
 		elif Input.is_action_just_pressed("move_left"):
 			choose(selected, -1)

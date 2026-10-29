@@ -2,6 +2,7 @@ extends StaticBody3D
 ## A villager or a signpost you can talk to with the action button.
 
 const B = preload("res://scripts/build.gd")
+const SculptRig = preload("res://scripts/sculpt_rig.gd")
 
 var main
 var npc_name := ""
@@ -13,6 +14,10 @@ var model: Node3D
 var parts := {}
 var base_yaw := 0.0
 var t := 0.0
+var sculpt = null          # SculptRig for characters with a sculpted model
+var stomp_t := -1.0        # time into the current spear stamp, < 0 when idle
+var dip := 0.0
+var arm_up_axis := Vector3.RIGHT
 
 
 func _ready() -> void:
@@ -22,6 +27,20 @@ func _ready() -> void:
 	var cs := CollisionShape3D.new()
 	model = Node3D.new()
 	add_child(model)
+	if colors.has("sculpt"):
+		var cap0 := CapsuleShape3D.new()
+		cap0.radius = 0.38
+		cap0.height = 1.7
+		cs.shape = cap0
+		cs.position.y = 0.85
+		sculpt = SculptRig.new()
+		sculpt.setup(model, colors.sculpt)
+		_prepare_stamp()
+		B.blob_shadow(self, 0.45)
+		add_child(cs)
+		model.rotation.y = base_yaw
+		t = randf() * 10.0
+		return
 	if is_sign:
 		var sh := BoxShape3D.new()
 		sh.size = Vector3(1.4, 1.8, 0.4)
@@ -84,10 +103,26 @@ func _ready() -> void:
 	t = randf() * 10.0
 
 
+## Works out which way to swing the upper arm so the elbow, and the spear
+## hand with it, lifts straight up.
+func _prepare_stamp() -> void:
+	var sh: Vector3 = sculpt.joints[sculpt.names.find("arm_l")]
+	var el: Vector3 = sculpt.joints[sculpt.names.find("forearm_l")]
+	var u := (el - sh).normalized()
+	var ax := u.cross(Vector3.UP)
+	if ax.length() < 0.01:
+		ax = Vector3.FORWARD
+	ax = ax.normalized()
+	arm_up_axis = ax if (Basis(ax, 0.3) * u).y > u.y else -ax
+
+
 func _process(delta: float) -> void:
 	if is_sign or main == null:
 		return
 	t += delta
+	if sculpt != null:
+		_animate_sculpt(delta)
+		return
 	var p = main.player
 	var d: float = global_position.distance_to(p.global_position)
 	var desired := base_yaw
@@ -100,3 +135,69 @@ func _process(delta: float) -> void:
 	if kid:
 		parts.arm_l.rotation.z = -0.3 + sin(t * 3.0) * 0.2
 		parts.arm_r.rotation.z = 0.3 - sin(t * 3.0) * 0.2
+
+
+func _animate_sculpt(delta: float) -> void:
+	var p = main.player
+	var d: float = global_position.distance_to(p.global_position)
+	var desired := base_yaw
+	if d < 5.0:
+		var to: Vector3 = p.global_position - global_position
+		desired = B.yaw_of(Vector3(to.x, 0, to.z))
+	model.rotation.y = lerp_angle(model.rotation.y, desired, 4.0 * delta)
+	var talking: bool = main.dialog_active and main.dialog_npc == self
+	# Spear stamp while talking: lift (0.4 s), hold, drive it down, rest.
+	var lift := 0.0
+	if talking and stomp_t < 0.0:
+		stomp_t = 0.0
+	if stomp_t >= 0.0:
+		var before := stomp_t
+		stomp_t += delta
+		if stomp_t < 0.4:
+			var k := stomp_t / 0.4
+			lift = 1.0 - (1.0 - k) * (1.0 - k)
+		elif stomp_t < 0.62:
+			lift = 1.0
+		elif stomp_t < 0.7:
+			var k2 := (stomp_t - 0.62) / 0.08
+			lift = 1.0 - k2 * k2
+		if before < 0.7 and stomp_t >= 0.7:
+			_stamp_impact()
+		if stomp_t >= 1.5:
+			stomp_t = 0.0 if talking else -1.0
+	dip = move_toward(dip, 0.0, delta * 0.25)
+	var a := lift * 0.95
+	var R := Basis(arm_up_axis, a)
+	var breathe := sin(t * 1.8) * 0.006
+	var pose := {
+		"body": Transform3D(Basis(Vector3.RIGHT, -dip * 1.5 - lift * 0.04), Vector3(0, breathe - dip, 0)),
+		"head": Transform3D(Basis.from_euler(Vector3(sin(t * 0.7) * 0.05 + (0.12 if talking and stomp_t > 0.7 and stomp_t < 0.9 else 0.0), sin(t * 0.4) * 0.08, 0)), Vector3.ZERO),
+		"arm_l": Transform3D(R, Vector3.ZERO),
+		"forearm_l": Transform3D(R.inverse(), Vector3(0, lift * 0.1, 0)),
+		"arm_r": Transform3D(Basis(Vector3.RIGHT, sin(t * 1.8) * 0.03), Vector3.ZERO),
+	}
+	sculpt.apply(pose)
+
+
+func _stamp_impact() -> void:
+	dip = 0.035
+	var butt: Array = sculpt.rig.spear_butt
+	var bp: Vector3 = model.global_transform * Vector3(butt[0], 0.02, butt[2])
+	main.sfx.play_at("stomp", bp)
+	# a puff of dust where the spear lands
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0.62, 0.55, 0.45, 0.55)
+	var puff := MeshInstance3D.new()
+	puff.mesh = B.sphere(0.12, 10, 5)
+	puff.material_override = m
+	puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	get_parent().add_child(puff)
+	puff.global_position = bp
+	puff.scale = Vector3(1.0, 0.25, 1.0)
+	var tw := puff.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(puff, "scale", Vector3(3.2, 0.5, 3.2), 0.45)
+	tw.tween_property(m, "albedo_color:a", 0.0, 0.45)
+	tw.chain().tween_callback(puff.queue_free)

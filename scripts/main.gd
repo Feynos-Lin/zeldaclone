@@ -57,6 +57,7 @@ var spawn_timer := 2.0
 var shards := 0
 var kills := 0
 var dialog_active := false
+var dialog_npc = null
 var dialog_lines: Array = []
 var dialog_index := 0
 var dialog_frame := 0
@@ -196,16 +197,13 @@ func build_environment() -> void:
 
 
 func spawn_npcs() -> void:
-	add_npc("Captain Orla", Vector3(3.4, 0, 19.0), PI, {
-		"skin": Color(0.78, 0.6, 0.45), "shirt": Color(0.5, 0.2, 0.17), "pants": Color(0.28, 0.24, 0.22),
-		"hair": Color(0.12, 0.08, 0.06), "helm": true, "hair_style": "bun", "face": "stern", "head_scale": 1.42, "leg": 0.84, "limb": 1.15, "hand_scale": 1.2,
-		"eye_color": Color(0.35, 0.25, 0.15), "forearm": Color(0.5, 0.2, 0.17), "hand": Color(0.3, 0.2, 0.12),
-		"bulk": 1.05,
-	}, [
+	add_npc("Old Brannoc", Vector3(3.4, 0, 19.0), PI, {"sculpt": "res://assets/guard/guard_mesh.res"}, [
 		"Heading out? At this hour?",
-		"Ever since the bell cracked, the dead have been crawling out of Hollow Cave, up the trail through the woods.",
-		"The ward-stones around the village hold them back. Out in the trees, though... you're on your own.",
-		"Hold your sword arm back to charge a spin. Lock on with Z if they start circling you.",
+		"Forty years I've stood this gate, and I've never seen the dead walk like they do now.",
+		"Ever since the bell cracked, they've been crawling out of Hollow Cave, up the trail through the woods.",
+		"The ward-stones hold them back from the village. Out in the trees, though... you're on your own.",
+		"Keep that shield up, lad. Hold the shield button and take their blows on the wood, not your skull.",
+		"Hold your sword arm back to charge a spin. And lock on if they start circling you.",
 	])
 	add_npc("Grandmother Ysel", Vector3(8.0, 0, 3.6), 1.1, {
 		"skin": Color(0.88, 0.74, 0.64), "shirt": Color(0.36, 0.28, 0.44), "pants": Color(0.32, 0.26, 0.38),
@@ -320,6 +318,7 @@ func nearest_npc(p: Vector3, radius: float):
 
 func start_dialog(npc) -> void:
 	dialog_active = true
+	dialog_npc = npc
 	dialog_lines = npc.lines.duplicate()
 	if npc.npc_name == "Dorran the Trader" and shards > 0:
 		dialog_lines.append("You've got %d shard%s on you. Keep them coming." % [shards, "" if shards == 1 else "s"])
@@ -337,6 +336,7 @@ func advance_dialog() -> void:
 	dialog_index += 1
 	if dialog_index >= dialog_lines.size():
 		dialog_active = false
+		dialog_npc = null
 		dialog_cooldown = 0.4
 		hud.hide_dialog()
 	else:
@@ -430,10 +430,10 @@ func _process(delta: float) -> void:
 	dialog_cooldown = maxf(dialog_cooldown - delta, 0.0)
 
 	if dialog_active and Engine.get_process_frames() != dialog_frame:
-		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("attack"):
+		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("jump"):
 			advance_dialog()
 	if game_over_active and Engine.get_process_frames() > game_over_frame + 20:
-		if Input.is_action_just_pressed("action"):
+		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("jump"):
 			respawn()
 	if Input.is_action_just_pressed("fullscreen"):
 		graphics.toggle_fullscreen()

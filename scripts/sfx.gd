@@ -25,6 +25,10 @@ func _ready() -> void:
 	streams["groan"] = make(gen_groan(1.3, 78.0))
 	streams["die"] = make(gen_groan(1.0, 60.0))
 	streams["gameover"] = make(gen_sweep(330.0, 82.0, 1.4, "square", 0.3))
+	streams["stomp"] = make(gen_thud(95.0, 0.28, 0.5))
+	streams["land"] = make(gen_thud(70.0, 0.14, 0.25))
+	streams["jump"] = make(gen_swing(0.16, 0.25, 0.25))
+	streams["block"] = make(gen_clang())
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.volume_db = -6.0
@@ -98,6 +102,37 @@ func gen_hit() -> PackedFloat32Array:
 		var env := exp(-t * 16.0)
 		var noise := randf_range(-1.0, 1.0) * exp(-t * 60.0)
 		out[i] = (sin(phase * TAU) * 0.8 + noise * 0.6) * env
+	return out
+
+
+## Low knock: falling sine body plus a short burst of filtered noise.
+func gen_thud(f0: float, dur: float, vol: float) -> PackedFloat32Array:
+	var n := int(RATE * dur)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		phase += (f0 * (0.6 + 0.4 * exp(-t * 30.0))) / RATE
+		lp += (randf_range(-1.0, 1.0) - lp) * 0.25
+		out[i] = (sin(phase * TAU) * exp(-t * 14.0) + lp * exp(-t * 45.0) * 0.8) * vol * 2.0
+	return out
+
+
+## Metal on metal: a few inharmonic partials ringing out over a hit.
+func gen_clang() -> PackedFloat32Array:
+	var n := int(RATE * 0.45)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var partials := [[523.0, 1.0], [1187.0, 0.6], [1803.0, 0.45], [2633.0, 0.3]]
+	for i in n:
+		var t := float(i) / RATE
+		var v := 0.0
+		for pr in partials:
+			v += sin(TAU * float(pr[0]) * t) * float(pr[1]) * exp(-t * (6.0 + float(pr[0]) / 400.0))
+		v += randf_range(-1.0, 1.0) * exp(-t * 80.0) * 0.8
+		out[i] = v * 0.28
 	return out
 
 

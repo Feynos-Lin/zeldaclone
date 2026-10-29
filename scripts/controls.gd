@@ -39,8 +39,10 @@ const PAD_LAYOUT := {
 	"cam_down": ["righty+"],
 	"attack": ["x", "b"],
 	"action": ["a"],
+	"jump": ["y"],
+	"shield": ["rightshoulder", "righttrigger+"],
 	"target": ["lefttrigger+", "leftshoulder"],
-	"recenter": ["y", "rightstick"],
+	"recenter": ["rightstick"],
 	"pause": ["start", "back"],
 }
 
@@ -49,11 +51,11 @@ const WIZARD_STEPS := [
 	["a", "Press the BOTTOM face button\n(A on Xbox, Cross on PlayStation)\nRoll · Talk · Confirm"],
 	["b", "Press the RIGHT face button\n(B on Xbox, Circle on PlayStation)\nSword · Back"],
 	["x", "Press the LEFT face button\n(X on Xbox, Square on PlayStation)\nSword"],
-	["y", "Press the TOP face button\n(Y on Xbox, Triangle on PlayStation)\nRecenter camera"],
+	["y", "Press the TOP face button\n(Y on Xbox, Triangle on PlayStation)\nJump"],
 	["leftshoulder", "Press the LEFT BUMPER\n(LB / L1)\nLock on"],
-	["rightshoulder", "Press the RIGHT BUMPER\n(RB / R1)"],
+	["rightshoulder", "Press the RIGHT BUMPER\n(RB / R1)\nShield"],
 	["lefttrigger", "Pull the LEFT TRIGGER\n(LT / L2)\nLock on"],
-	["righttrigger", "Pull the RIGHT TRIGGER\n(RT / R2)"],
+	["righttrigger", "Pull the RIGHT TRIGGER\n(RT / R2)\nShield"],
 	["start", "Press START / OPTIONS\nPause"],
 	["back", "Press BACK / SELECT / SHARE\nPause"],
 	["dpup", "Press D-PAD UP"],
@@ -109,8 +111,10 @@ func setup_keyboard() -> void:
 		"cam_up": [KEY_R],
 		"cam_down": [KEY_F],
 		"attack": [KEY_J],
-		"action": [KEY_SPACE, KEY_K, KEY_ENTER],
-		"target": [KEY_TAB, KEY_L],
+		"action": [KEY_SHIFT, KEY_K, KEY_ENTER],
+		"jump": [KEY_SPACE],
+		"shield": [KEY_L, KEY_CTRL],
+		"target": [KEY_TAB],
 		"recenter": [KEY_C],
 		"pause": [KEY_ESCAPE, KEY_P],
 		"fullscreen": [KEY_F11],
@@ -122,7 +126,7 @@ func setup_keyboard() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(action, e)
-	for pair in [["attack", MOUSE_BUTTON_LEFT], ["target", MOUSE_BUTTON_RIGHT]]:
+	for pair in [["attack", MOUSE_BUTTON_LEFT], ["shield", MOUSE_BUTTON_RIGHT], ["target", MOUSE_BUTTON_MIDDLE]]:
 		var m := InputEventMouseButton.new()
 		m.button_index = pair[1]
 		InputMap.action_add_event(pair[0], m)
@@ -285,11 +289,11 @@ func confirm_name() -> String:
 func hint_text() -> String:
 	match last_device:
 		"gamepad":
-			return "Left stick / D-pad: move · %s or %s: sword (hold to spin) · %s: roll / talk · %s: lock on · Right stick: camera · %s: recenter · %s: pause" % [
-				button_name("x"), button_name("b"), button_name("a"), button_name("lefttrigger"), button_name("y"), button_name("start")]
+			return "Left stick: move · %s/%s: sword (hold to spin) · %s: roll / talk · %s: jump · %s: shield · %s: lock on · Right stick: camera · %s: recenter · %s: pause" % [
+				button_name("x"), button_name("b"), button_name("a"), button_name("y"), button_name("rightshoulder"), button_name("lefttrigger"), button_name("rightstick"), button_name("start")]
 		"touch":
-			return "Stick: move · B: sword (hold to spin) · A: roll / talk · Z: lock on · drag right side: camera"
-	return "WASD move · J / click: sword (hold to spin) · Space: roll / talk · Tab: lock on · Q/E R/F: camera · C: recenter · Esc: pause"
+			return "Stick: move · B: sword (hold to spin) · A: roll / talk · J: jump · R: hold shield · Z: lock on · drag right side: camera"
+	return "WASD move · J / click: sword (hold to spin) · Space: jump / talk · Shift: roll · L / right-click: shield · Tab: lock on · Q/E R/F: camera · C: recenter · Esc: pause"
 
 
 func rumble(weak: float, strong: float, duration: float) -> void:

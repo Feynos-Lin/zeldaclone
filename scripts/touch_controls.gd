@@ -1,6 +1,7 @@
 extends Control
 ## On-screen controls for phones: floating stick on the left half,
-## A (roll / talk), B (sword, hold to charge) and Z (lock-on) on the right,
+## A (roll / talk), B (sword, hold to charge), Z (lock-on), J (jump) and
+## R (hold to raise the shield) on the right,
 ## and drag anywhere else on the right half to turn the camera.
 
 var cam_drag := 0.0
@@ -15,6 +16,8 @@ var buttons := {
 	"attack": {"label": "B", "color": Color(0.25, 0.7, 0.35), "r": 22.0},
 	"action": {"label": "A", "color": Color(0.25, 0.45, 0.9), "r": 17.0},
 	"target": {"label": "Z", "color": Color(0.85, 0.75, 0.3), "r": 14.0},
+	"jump": {"label": "J", "color": Color(0.55, 0.4, 0.8), "r": 14.0},
+	"shield": {"label": "R", "color": Color(0.6, 0.6, 0.65), "r": 15.0},
 }
 
 
@@ -42,6 +45,10 @@ func button_center(action: String) -> Vector2:
 			return Vector2(w - 92, h - 32)
 		"target":
 			return Vector2(w - 98, h - 82)
+		"jump":
+			return Vector2(w - 138, h - 44)
+		"shield":
+			return Vector2(w - 40, h - 108)
 	return Vector2.ZERO
 
 

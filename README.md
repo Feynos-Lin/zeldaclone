@@ -18,10 +18,12 @@ Every push to `main` builds a new release (see the Releases page):
 |---|---|---|---|
 | Move | WASD | Left stick or D-pad | Left-side stick |
 | Sword (hold, then release to spin) | J / left click | X or B | B |
-| Roll / talk / advance text | Space | A | A |
-| Lock on | Tab / right click | LT or LB | Z |
+| Jump (or talk, next to someone) | Space | Y | J |
+| Roll / talk / advance text | Shift / K / Enter | A | A |
+| Shield (hold) | L / Ctrl / right click | RB or RT | R |
+| Lock on | Tab / middle click | LT or LB | Z |
 | Turn / tilt camera | Q / E, R / F | Right stick | Drag on the right side |
-| Recenter camera | C | Y or click right stick | |
+| Recenter camera | C | Click right stick | |
 | Pause menu | Esc / P | Start or Back | |
 | Fullscreen | F11 | | |
 
@@ -46,12 +48,14 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 
 - Forest village with no walls: thatched cottages, villagers to talk to, and a ring of ward-stones the dead can't cross
 - A winding trail through the woods to a graveyard and Hollow Cave, which spawns zombies
-- 3-hit sword combo, charged spin attack, dodge roll with invincibility, lock-on with letterbox bars
+- 3-hit sword combo, charged spin attack, dodge roll with invincibility, jumping, lock-on with letterbox bars
+- Hold the shield up to sidestep and block blows from the front; blocked zombies reel back
+- Old Brannoc, the gate guard, stamps his spear while he talks to you
 - Hearts, bone shards and heart drops, death and respawn
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises
 - Hand-painted look: soft per-pixel lighting, real sun shadows, sky, bloom and film-style grading
 - Pause menu settings: Graphics (Low / Medium / High), Resolution (up to 1440p in 16:9, 16:10, 4:3, 5:4 and 21:9 on desktop; render resolution on Android) and Windowed / Fullscreen
-- The hero is a sculpted model painted from the character art; everything else (models, textures, sounds) is generated in code
+- The hero and the gate guard are sculpted models painted from their character art; everything else (models, textures, sounds) is generated in code
 
 ## Project layout
 
@@ -59,7 +63,7 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - `scripts/player.gd`, `zombie.gd`, `npc.gd`, `pickup.gd` are the characters and items
 - `scripts/camera_rig.gd`, `hud.gd`, `touch_controls.gd`, `sfx.gd` handle the camera, UI, phone controls and sound
 - `scripts/build.gd` has the low-poly mesh, texture and material helpers
-- `scripts/hero_skin.gd` and `assets/hero/` are the hero's sculpted model; `tools/hero/` rebuilds it from the source sculpt
+- `scripts/hero_skin.gd` and `assets/hero/` are the hero's sculpted model; `scripts/sculpt_rig.gd` and `assets/guard/` the guard's; `tools/hero/` and `tools/guard/` rebuild them from the source sculpts
 - `.github/workflows/build.yml` exports the APK and Linux build and packages the `.rpm`
 
 `android/debug.keystore` is a throwaway signing key kept in the repo so each new APK installs over the previous one. Use your own key before publishing anywhere.

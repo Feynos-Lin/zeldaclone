@@ -176,7 +176,8 @@ func _physics_process(delta: float) -> void:
 				if player_ok and dist < 1.95:
 					var fwd := face_dir
 					if dist < 0.3 or fwd.dot(to_p / dist) > 0.2:
-						player.take_damage(1, to_p if dist > 0.01 else fwd)
+						if player.take_damage(1, to_p if dist > 0.01 else fwd):
+							stagger(-to_p)
 				main.sfx.play_at("swipe", global_position)
 				attack_cd = 1.4
 				set_state("recover")
@@ -262,6 +263,16 @@ func take_hit(dmg: int, dir: Vector3) -> void:
 	else:
 		set_state("hurt")
 		attack_cd = maxf(attack_cd, 0.6)
+
+
+## Bounced off the hero's shield: reel back without taking damage.
+func stagger(dir: Vector3) -> void:
+	if state == "dying":
+		return
+	knock = dir.normalized() * 4.5
+	knock.y = 0
+	set_state("hurt")
+	attack_cd = maxf(attack_cd, 1.0)
 
 
 func update_flash(delta: float) -> void:
