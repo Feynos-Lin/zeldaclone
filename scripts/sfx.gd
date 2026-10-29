@@ -36,6 +36,9 @@ func _ready() -> void:
 	streams["fuse"] = make(gen_hiss(0.45))
 	streams["cough"] = make(gen_cough())
 	streams["door"] = make(gen_door())
+	streams["cluck"] = make(gen_cluck())
+	streams["bark"] = make(gen_bark())
+	streams["meow"] = make(gen_meow())
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.volume_db = -6.0
@@ -211,6 +214,66 @@ func gen_door() -> PackedFloat32Array:
 			var u := t - 0.38
 			thud = sin(TAU * 90.0 * u) * exp(-u * 25.0) * 0.6
 		out[i] = creak + thud
+	return out
+
+
+## Hen: a few quick nasal "buk" notes.
+func gen_cluck() -> PackedFloat32Array:
+	var n := int(RATE * 0.5)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	var starts := [0.0, 0.11, 0.2, 0.34]
+	for i in n:
+		var t := float(i) / RATE
+		var e := 0.0
+		var f := 600.0
+		for k in starts.size():
+			var u: float = t - float(starts[k])
+			if u > 0.0 and u < 0.07:
+				e = sin(u / 0.07 * PI)
+				f = 650.0 + 200.0 * float(k == 3) - u * 2000.0
+		phase += f / RATE
+		var s := fmod(phase, 1.0)
+		out[i] = (absf(s * 2.0 - 1.0) * 2.0 - 1.0) * e * 0.35 + sin(phase * TAU * 2.0) * e * 0.15
+	return out
+
+
+## Dog: two short barks.
+func gen_bark() -> PackedFloat32Array:
+	var n := int(RATE * 0.55)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var e := 0.0
+		var f := 300.0
+		for st in [0.0, 0.26]:
+			var u: float = t - float(st)
+			if u > 0.0 and u < 0.14:
+				e = sin(u / 0.14 * PI) * exp(-u * 8.0)
+				f = 380.0 - u * 900.0
+		phase += f / RATE
+		lp += (randf_range(-1.0, 1.0) - lp) * 0.4
+		var saw := fmod(phase, 1.0) * 2.0 - 1.0
+		out[i] = (saw * 0.45 + lp * 0.35) * e
+	return out
+
+
+## Cat: a rising then falling "mew".
+func gen_meow() -> PackedFloat32Array:
+	var n := int(RATE * 0.6)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	for i in n:
+		var t := float(i) / n
+		var f := 520.0 + 380.0 * sin(t * PI) - 150.0 * t
+		phase += f / RATE
+		var v := sin(phase * TAU) + 0.4 * sin(phase * TAU * 2.0) + 0.2 * sin(phase * TAU * 3.0)
+		out[i] = v * sin(t * PI) * 0.18
 	return out
 
 

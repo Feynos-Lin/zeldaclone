@@ -58,6 +58,8 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - Every cottage can be entered: walk into its door for a furnished room with a fire going
 - Side quest: Wenna lies sick in one of the cottages. She lost her satchel, with her medicine in it, fleeing the cave; find it by the graves outside Hollow Cave and bring it back for a heart charm (one more heart)
 - An eerie forest theme on a loop, muffled when you're indoors
+- Hens, a dog and cats wander the village (the dog sometimes tags along after you)
+- More side quests: catch Farmer Hobb's five escaped hens (bigger bomb bag), hit Tamsin's three archery targets in 45 seconds (bigger quiver), defeat ten zombies for Old Brannoc (one more heart), and bring Dorran five bone shards (sharpened sword). Active quests show under the item counter
 - Old Brannoc, the gate guard, stamps his spear while he talks to you
 - Hearts, bone shards and heart drops, death and respawn
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises

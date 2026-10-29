@@ -55,6 +55,19 @@ func _physics_process(delta: float) -> void:
 			main.hitstop(0.03)
 			queue_free()
 			return
+	# archery targets
+	for tg in get_tree().get_nodes_in_group("targets"):
+		var c2: Vector3 = tg.centre()
+		var seg2 := to - from
+		var tt2 := clampf((c2 - from).dot(seg2) / maxf(seg2.length_squared(), 1e-6), 0.0, 1.0)
+		var cl2 := from + seg2 * tt2
+		if cl2.distance_to(c2) < 0.5:
+			global_position = cl2
+			stuck = true
+			life = 6.0
+			tg.arrow_hit()
+			main.sfx.play_at("thunk", cl2)
+			return
 	var q := PhysicsRayQueryParameters3D.create(from, to, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if not hit.is_empty() or to.y < -0.5:

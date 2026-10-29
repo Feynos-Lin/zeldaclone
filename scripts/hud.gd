@@ -144,7 +144,7 @@ func _process(delta: float) -> void:
 	var qt: String = main.quest_text()
 	quest_label.text = ("Quest: " + qt) if qt != "" else ""
 	quest_label.position = Vector2(8, 56)
-	quest_label.size = Vector2(minf(w * 0.5, 240), 14)
+	quest_label.size = Vector2(minf(w * 0.55, 260), 60)
 
 	var title_a := clampf(5.0 - title_time, 0.0, 1.0) * clampf(title_time * 1.5, 0.0, 1.0)
 	title.position = Vector2(0, h * 0.28)

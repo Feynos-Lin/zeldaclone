@@ -96,6 +96,12 @@ func _ready() -> void:
 			B.mesh(body, B.loft([[0.06, 0.25, 0.23], [0.45, 0.2, 0.17], [0.84, 0.158, 0.118], [1.02, 0.142, 0.1]], 12), Vector3.ZERO, B.paint_mat(colors.dress, "cloth", 33))
 			parts.pivot.rotation.x = -0.18
 			parts.head.rotation.x = 0.2
+		if colors.get("bow", false) and ResourceLoader.exists("res://assets/items/bow_mesh.res"):
+			var bow := MeshInstance3D.new()
+			bow.mesh = load("res://assets/items/bow_mesh.res")
+			bow.set_meta("keep", true)
+			bow.transform = Transform3D(Basis(Vector3.UP, PI * 0.5) * Basis(Vector3.RIGHT, 0.55), Vector3(0.0, 1.25, 0.2))
+			body.add_child(bow)
 		if colors.has("apron"):
 			B.mesh(body, B.box_mesh(Vector3(0.26, 0.5, 0.02)), Vector3(0, 0.88, -0.118), B.paint_mat(colors.apron, "cloth", 35))
 		if kid:

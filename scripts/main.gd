@@ -13,6 +13,7 @@ const TouchScript = preload("res://scripts/touch_controls.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
 const MusicScript = preload("res://scripts/music.gd")
 const InteriorsScript = preload("res://scripts/interiors.gd")
+const VillageScript = preload("res://scripts/village_life.gd")
 const WorldScript = preload("res://scripts/world.gd")
 const ControlsScript = preload("res://scripts/controls.gd")
 const PauseScript = preload("res://scripts/pause_menu.gd")
@@ -52,6 +53,9 @@ var transition_active := false
 var doors: Array = []        # filled by the world builder: one entry per cottage door
 var quest_state := 0         # Wenna's satchel: 0 not started, 1 looking, 2 found it, 3 returned
 var pending_reward := false
+var pending_call := Callable()   # run when the current conversation closes (quest rewards and starts)
+var quests := {"hens": 0, "archery": 0, "cull": 0, "shards": 0}
+var village
 var env: Environment
 var sun: DirectionalLight3D
 var fill: DirectionalLight3D
@@ -139,6 +143,10 @@ func _ready() -> void:
 	add_child(interiors)
 	interiors.build(doors)
 	spawn_satchel()
+	village = VillageScript.new()
+	village.main = self
+	add_child(village)
+	village.build()
 	hud.set_hint(controls.hint_text())
 	controls.device_changed.connect(func(_kind): hud.set_hint(controls.hint_text()))
 	controls.message.connect(func(text): hud.toast(text))
@@ -239,6 +247,17 @@ func spawn_npcs() -> void:
 		"Bone shards! Bring me the shards those things leave behind.",
 		"Grind enough of them down and you get ward-dust. Get me enough, and maybe we seal that cave for good.",
 	])
+	add_npc("Farmer Hobb", Vector3(-15.8, 0, -3.6), -1.2, {
+		"skin": Color(0.8, 0.6, 0.45), "shirt": Color(0.56, 0.46, 0.3), "pants": Color(0.34, 0.3, 0.25),
+		"hair": Color(0.7, 0.68, 0.64), "hat": Color(0.82, 0.7, 0.42), "beard": Color(0.72, 0.7, 0.66),
+		"hair_style": "short", "eye_color": Color(0.3, 0.25, 0.2), "head_scale": 1.4, "leg": 0.8, "limb": 1.2, "hand_scale": 1.3,
+		"bulk": 1.18, "hips": 1.12, "apron": Color(0.62, 0.55, 0.42),
+	}, [])
+	add_npc("Tamsin the Hunter", Vector3(17.5, 0, -12.5), -2.4, {
+		"skin": Color(0.84, 0.66, 0.52), "shirt": Color(0.28, 0.38, 0.24), "pants": Color(0.38, 0.28, 0.2),
+		"hair": Color(0.62, 0.24, 0.1), "hair_style": "long", "face": "stern", "eye_color": Color(0.25, 0.4, 0.25),
+		"head_scale": 1.38, "leg": 0.86, "limb": 1.1, "hand_scale": 1.15, "cuffs": true, "bow": true,
+	}, [])
 	add_sign("Signpost", Vector3(3.2, 0, 23.5), 0.0, [
 		"WRENMOOR. North trail: Hollow Cave. West road: closed, tree down.",
 		"Scratched underneath: THEY ONLY COME OUT AT NIGHT. MOSTLY.",
@@ -369,19 +388,22 @@ func wenna_lines() -> Array:
 
 
 func quest_text() -> String:
+	var lines: Array = []
 	match quest_state:
 		1:
-			return "Find Wenna's satchel by the graves near Hollow Cave"
+			lines.append("Find Wenna's satchel by the graves near Hollow Cave")
 		2:
-			return "Bring the satchel back to Wenna"
-	return ""
+			lines.append("Bring the satchel back to Wenna")
+	if village != null:
+		lines.append_array(village.quest_lines())
+	return "\n".join(lines)
 
 
 func give_wenna_reward() -> void:
 	pending_reward = false
 	player.max_hp += 2
 	player.hp = player.max_hp
-	player.arrows = mini(player.arrows + 10, player.MAX_ARROWS)
+	player.arrows = mini(player.arrows + 10, player.max_arrows)
 	sfx.play("heart")
 	sfx.play("charged")
 	hud.toast("Heart charm! Your hearts grew by one.")
@@ -397,6 +419,9 @@ func start_dialog(npc) -> void:
 		dialog_lines = ["Whoa! Is that a real bone shard?!", "...I'm gonna pretend I didn't see that. Mom would freak."]
 	if npc.npc_name == "Wenna":
 		dialog_lines = wenna_lines()
+	var vl: Array = village.lines_for(npc)
+	if not vl.is_empty():
+		dialog_lines = vl
 	dialog_index = 0
 	dialog_frame = Engine.get_process_frames()
 	hud.show_dialog(npc.npc_name, dialog_lines[0])
@@ -413,6 +438,10 @@ func advance_dialog() -> void:
 		dialog_cooldown = 0.4
 		if pending_reward:
 			give_wenna_reward()
+		if pending_call.is_valid():
+			var c := pending_call
+			pending_call = Callable()
+			c.call()
 		elif quest_state == 1 and dialog_lines.size() == 5:
 			hud.toast("Side quest: Wenna's Satchel")
 		hud.hide_dialog()
@@ -451,10 +480,10 @@ func collect(kind: String) -> void:
 		sfx.play("heart")
 		hud.toast("You found Wenna's satchel! There's a little green bottle inside.")
 	elif kind == "arrows":
-		player.arrows = mini(player.arrows + 5, player.MAX_ARROWS)
+		player.arrows = mini(player.arrows + 5, player.max_arrows)
 		sfx.play("shard", 0.8)
 	elif kind == "bombs":
-		player.bombs = mini(player.bombs + 2, player.MAX_BOMBS)
+		player.bombs = mini(player.bombs + 2, player.max_bombs)
 		sfx.play("shard", 0.7)
 	else:
 		shards += 1

@@ -9,8 +9,6 @@ const ArrowScript = preload("res://scripts/arrow.gd")
 const BombScript = preload("res://scripts/bomb.gd")
 const SWORD_MESH := "res://assets/items/sword_mesh.res"
 const BOW_MESH := "res://assets/items/bow_mesh.res"
-const MAX_ARROWS := 30
-const MAX_BOMBS := 10
 
 const SPEED := 5.5
 const ROLL_SPEED := 10.5
@@ -32,6 +30,9 @@ var items := ["bow", "bombs"]
 var item_idx := 0
 var arrows := 20
 var bombs := 6
+var max_arrows := 30
+var max_bombs := 10
+var sword_bonus := 0        # Dorran's shard-paste edge
 var bow_node: Node3D
 var nock_arrow: Node3D
 var held_bomb = null
@@ -537,6 +538,8 @@ func state_move(move_dir: Vector3, frozen: bool) -> void:
 		pass   # no rolling in mid-air
 	elif Input.is_action_just_pressed("action") and held_bomb != null:
 		drop_bomb()
+	elif Input.is_action_just_pressed("action") and main.village.try_catch_hen(global_position):
+		pass
 	elif Input.is_action_just_pressed("action"):
 		var npc = main.nearest_npc(global_position, 2.6)
 		if npc != null and main.dialog_cooldown > 0.0:
@@ -636,9 +639,9 @@ func state_roll() -> void:
 
 func do_hit() -> void:
 	var reach := 2.9 if spin else 2.3
-	var dmg := 1
+	var dmg := 1 + sword_bonus
 	if spin or combo == 2:
-		dmg = 2
+		dmg = 2 + sword_bonus
 	var landed := false
 	for z in get_tree().get_nodes_in_group("zombies"):
 		if not z.is_alive():
