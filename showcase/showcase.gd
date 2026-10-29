@@ -181,6 +181,7 @@ func build_hero() -> void:
 		if n is MeshInstance3D:
 			n.visible = false     # blob shadow; the studio has real shadows
 	pose_nervous()
+	hero.attach_gear()
 
 
 ## Nervous stance: knees bent and apart, fists raised near the chest,
@@ -224,6 +225,10 @@ func save(name: String) -> void:
 
 
 func head_pos() -> Vector3:
+	if hero.skin != null:
+		var sk = hero.skin
+		var i: int = sk.names.find("head")
+		return sk.skeleton.global_transform * (sk.cur_pos[i] as Vector3) + Vector3(0, 0.2, 0)
 	return hero.parts.head.global_position + Vector3(0, 0.22, 0)
 
 

@@ -3,6 +3,7 @@ extends CharacterBody3D
 ## dodge roll with invincibility frames, and lock-on targeting.
 
 const B = preload("res://scripts/build.gd")
+const HeroSkin = preload("res://scripts/hero_skin.gd")
 
 const SPEED := 5.5
 const ROLL_SPEED := 10.5
@@ -15,6 +16,8 @@ var cam_rig
 var model: Node3D
 var parts := {}
 var sword_root: Node3D
+var shield_node: Node3D
+var skin = null     # HeroSkin when the sculpted model is present
 var blade_mat: StandardMaterial3D
 
 var max_hp := 6   # half-hearts: 6 = 3 hearts
@@ -122,6 +125,7 @@ func _ready() -> void:
 	shield.position = Vector3(-0.065, -0.13, 0)
 	shield.rotation_degrees = Vector3(0, 0, 90)
 	parts.forearm_l.add_child(shield)
+	shield_node = shield
 	B.mesh(shield, B.cyl(0.21, 0.21, 0.04, 12), Vector3.ZERO, B.paint_mat(Color(0.55, 0.37, 0.2), "leather", 5))
 	B.mesh(shield, B.cyl(0.222, 0.222, 0.03, 12), Vector3(0, 0.005, 0), B.paint_mat(Color(0.48, 0.47, 0.46), "metal"))
 	B.mesh(shield, B.sphere(0.05, 8, 4), Vector3(0, 0.03, 0), B.paint_mat(Color(0.55, 0.54, 0.52), "metal"))
@@ -140,6 +144,16 @@ func _ready() -> void:
 	B.merge_children(model)
 	B.blob_shadow(self)
 	rest_pose()
+	if HeroSkin.available():
+		skin = HeroSkin.new()
+		skin.setup(model, parts)
+		attach_gear()
+
+
+## Moves the sculpted body to match the animated rig.
+func attach_gear() -> void:
+	if skin != null:
+		skin.update()
 
 
 func is_alive() -> bool:
@@ -188,6 +202,7 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	animate(delta)
+	attach_gear()
 
 
 func cam_relative(v: Vector2) -> Vector3:

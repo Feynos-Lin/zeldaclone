@@ -51,7 +51,7 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises
 - Hand-painted look: soft per-pixel lighting, real sun shadows, sky, bloom and film-style grading
 - Pause menu settings: Graphics (Low / Medium / High), Resolution (up to 1440p in 16:9, 16:10, 4:3, 5:4 and 21:9 on desktop; render resolution on Android) and Windowed / Fullscreen
-- All models, textures and sounds are generated in code, so there are no asset files
+- The hero is a sculpted model painted from the character art; everything else (models, textures, sounds) is generated in code
 
 ## Project layout
 
@@ -59,6 +59,7 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - `scripts/player.gd`, `zombie.gd`, `npc.gd`, `pickup.gd` are the characters and items
 - `scripts/camera_rig.gd`, `hud.gd`, `touch_controls.gd`, `sfx.gd` handle the camera, UI, phone controls and sound
 - `scripts/build.gd` has the low-poly mesh, texture and material helpers
+- `scripts/hero_skin.gd` and `assets/hero/` are the hero's sculpted model; `tools/hero/` rebuilds it from the source sculpt
 - `.github/workflows/build.yml` exports the APK and Linux build and packages the `.rpm`
 
 `android/debug.keystore` is a throwaway signing key kept in the repo so each new APK installs over the previous one. Use your own key before publishing anywhere.
