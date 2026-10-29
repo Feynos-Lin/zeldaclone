@@ -1,7 +1,11 @@
 import sys, numpy as np
-W = sys.argv[1]; lod = int(sys.argv[2]); tag = sys.argv[3]
+W = sys.argv[1]; tag = sys.argv[3]
+lod = sys.argv[2]   # LOD number from decimate.gd, or 'full' for the original triangles
 P = np.load(W + '/P.npy')
-li = np.fromfile(W + '/lod_%d.bin' % lod, dtype='<i4').reshape(-1, 3)   # already clockwise (Godot)
+if lod == 'full':
+    li = np.load(W + '/I.npy')[:, [0, 2, 1]].astype(np.int64)   # glTF is counter-clockwise; Godot wants clockwise
+else:
+    li = np.fromfile(W + '/lod_%s.bin' % lod, dtype='<i4').reshape(-1, 3)   # already clockwise (Godot)
 used = np.unique(li)
 remap = -np.ones(len(P), dtype=np.int64); remap[used] = np.arange(len(used))
 Pc = P[used]; Ic = remap[li]

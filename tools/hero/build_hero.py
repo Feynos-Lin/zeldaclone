@@ -13,11 +13,14 @@ from scipy import ndimage as ndi
 
 W = sys.argv[1]
 OUT = sys.argv[2]
-P = np.load(W + '/P_hi.npy').astype(np.float64)
-I = np.load(W + '/I_hi.npy')
-N = np.load(W + '/N_hi.npy').astype(np.float64)
+TAG = sys.argv[3] if len(sys.argv) > 3 else 'hi'
+P = np.load(W + '/P_%s.npy' % TAG).astype(np.float64)
+I = np.load(W + '/I_%s.npy' % TAG)
+N = np.load(W + '/N_%s.npy' % TAG).astype(np.float64)
 img = np.load(W + '/img.npy')
 IH, IW, _ = img.shape
+# mesh-density factor: ring-based steps below were tuned on the 32k-triangle mesh
+DENS = max(1.0, (len(I) / 32768) ** 0.5)
 
 # ---------------------------------------------------------------- landmarks: mesh front (x, y) -> image (px, py)
 LM = [
@@ -177,7 +180,7 @@ gone |= _band & ((z > 0.165) | (np.abs(x) > 0.25))
 # eat the sleeve flaps left around the cut: grow into the shoulder/side zone a few rings
 _e0 = np.concatenate([I[:, [0, 1]], I[:, [1, 2]], I[:, [2, 0]]])
 _zone = _band & ((np.abs(x) > 0.19) | (z > 0.14)) | (arm_sum > 0.12)
-for _ in range(4):
+for _ in range(int(round(4 * DENS))):
     _g = gone.copy()
     _g[_e0[:, 1][gone[_e0[:, 0]]]] = True
     _g[_e0[:, 0][gone[_e0[:, 1]]]] = True
@@ -254,7 +257,7 @@ _Adj = _coo((np.ones(len(_e1)), (_e1[:, 0], _e1[:, 1])), shape=(len(P), len(P)))
 _deg = np.asarray(_Adj.sum(1)).ravel() + 1
 face_zone = np.clip((P[:, 1] - 0.18) / 0.06, 0, 1) * np.clip((P[:, 2] - 0.05) / 0.1, 0, 1) * (P[:, 1] < 0.62)
 Ns = N.copy()
-for it in range(12):
+for it in range(int(round(12 * DENS * DENS))):
     Ns = (np.asarray(_Adj @ Ns) + Ns) / _deg[:, None]
     Ns /= np.linalg.norm(Ns, axis=1, keepdims=True) + 1e-9
 k_s = 0.35 + 0.65 * face_zone
