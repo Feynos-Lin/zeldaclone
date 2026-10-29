@@ -29,6 +29,11 @@ func _ready() -> void:
 	streams["land"] = make(gen_thud(70.0, 0.14, 0.25))
 	streams["jump"] = make(gen_swing(0.16, 0.25, 0.25))
 	streams["block"] = make(gen_clang())
+	streams["thunk"] = make(gen_thud(210.0, 0.12, 0.3))
+	streams["boom"] = make(gen_boom())
+	streams["bowshot"] = make(gen_twang())
+	streams["draw"] = make(gen_swing(0.3, 0.06, 0.14))
+	streams["fuse"] = make(gen_hiss(0.45))
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.volume_db = -6.0
@@ -117,6 +122,53 @@ func gen_thud(f0: float, dur: float, vol: float) -> PackedFloat32Array:
 		phase += (f0 * (0.6 + 0.4 * exp(-t * 30.0))) / RATE
 		lp += (randf_range(-1.0, 1.0) - lp) * 0.25
 		out[i] = (sin(phase * TAU) * exp(-t * 14.0) + lp * exp(-t * 45.0) * 0.8) * vol * 2.0
+	return out
+
+
+## A bomb going off: a crack, then a long low rumble.
+func gen_boom() -> PackedFloat32Array:
+	var n := int(RATE * 1.3)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	var phase := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		lp += (randf_range(-1.0, 1.0) - lp) * (0.5 * exp(-t * 6.0) + 0.04)
+		lp2 += (lp - lp2) * 0.3
+		phase += (55.0 * exp(-t * 2.0) + 30.0) / RATE
+		out[i] = (lp2 * 2.4 * exp(-t * 3.2) + sin(phase * TAU) * 0.6 * exp(-t * 4.0)) * minf(1.0, t * 400.0)
+	return out
+
+
+## Bowstring release: a plucked low string over a short whoosh.
+func gen_twang() -> PackedFloat32Array:
+	var n := int(RATE * 0.35)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		lp += (randf_range(-1.0, 1.0) - lp) * 0.3
+		var f := 140.0 + 40.0 * exp(-t * 25.0)
+		out[i] = (sin(TAU * f * t) * 0.6 + sin(TAU * f * 2.01 * t) * 0.25) * exp(-t * 11.0) + lp * exp(-t * 30.0) * 0.5
+	return out
+
+
+## Burning fuse: crackly high hiss.
+func gen_hiss(dur: float) -> PackedFloat32Array:
+	var n := int(RATE * dur)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var prev := 0.0
+	for i in n:
+		var t := float(i) / n
+		var v := randf_range(-1.0, 1.0)
+		var hp := v - prev
+		prev = v
+		var crackle := 1.0 if randf() < 0.02 else 0.3
+		out[i] = hp * 0.22 * crackle * sin(t * PI)
 	return out
 
 

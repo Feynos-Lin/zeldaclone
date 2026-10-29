@@ -197,7 +197,7 @@ func build_environment() -> void:
 
 
 func spawn_npcs() -> void:
-	add_npc("Old Brannoc", Vector3(3.4, 0, 19.0), PI, {"sculpt": "res://assets/guard/guard_mesh.res"}, [
+	add_npc("Old Brannoc", Vector3(3.4, 0, 19.0), PI, {"sculpt": "res://assets/guard/guard_mesh.res", "anim": "guard"}, [
 		"Heading out? At this hour?",
 		"Forty years I've stood this gate, and I've never seen the dead walk like they do now.",
 		"Ever since the bell cracked, they've been crawling out of Hollow Cave, up the trail through the woods.",
@@ -205,21 +205,14 @@ func spawn_npcs() -> void:
 		"Keep that shield up, lad. Hold the shield button and take their blows on the wood, not your skull.",
 		"Hold your sword arm back to charge a spin. And lock on if they start circling you.",
 	])
-	add_npc("Grandmother Ysel", Vector3(8.0, 0, 3.6), 1.1, {
-		"skin": Color(0.88, 0.74, 0.64), "shirt": Color(0.36, 0.28, 0.44), "pants": Color(0.32, 0.26, 0.38),
-		"hair": Color(0.86, 0.85, 0.84), "shawl": Color(0.58, 0.44, 0.64), "dress": Color(0.3, 0.24, 0.38),
-		"hair_style": "bun", "face": "old", "eye_color": Color(0.35, 0.4, 0.45), "hips": 1.1, "head_scale": 1.45, "leg": 0.8, "limb": 1.1, "hand_scale": 1.15,
-	}, [
+	add_npc("Grandmother Ysel", Vector3(8.0, 0, 3.6), 1.1, {"sculpt": "res://assets/villagers/lady_mesh.res", "anim": "elder"}, [
 		"The moon has been wrong for three nights now. Pale as bone, and closer every evening.",
 		"When it rises, the cave breathes out the dead.",
 		"Somebody ought to find out what is waking them. Wrenmoor can't take many more nights like this.",
 	])
-	add_npc("Pip", Vector3(-1.2, 0, -1.6), 0.4, {
-		"skin": Color(0.9, 0.74, 0.6), "shirt": Color(0.86, 0.66, 0.22), "pants": Color(0.3, 0.4, 0.56),
-		"hair": Color(0.66, 0.34, 0.13), "hair_style": "short", "face": "kid", "eye_color": Color(0.2, 0.3, 0.18), "smudge": true, "leg": 0.76, "limb": 1.2, "hand_scale": 1.3, "baggy": 1.15,
-		"forearm": Color(0.9, 0.74, 0.6), "bulk": 0.9,
-	}, [
+	add_npc("Pip", Vector3(-1.2, 0, -1.6), 0.4, {"sculpt": "res://assets/villagers/child_mesh.res", "anim": "kid"}, [
 		"Mom says I'm not allowed past the gate.",
+		"Is that a real sword? And a bow?! And BOMBS?! Can I hold one? ...No? Okay.",
 		"Do they really walk like this? *shuffle* *shuffle* Uuuurgh!",
 		"Bring me back a bone shard sometime? Just one. I won't tell anybody.",
 	], true)
@@ -350,6 +343,11 @@ func on_zombie_killed(z) -> void:
 	var heart_chance := 0.45 if player.hp < player.max_hp else 0.1
 	if randf() < heart_chance:
 		drop(p, "heart")
+	# ammo, more likely the lower he's running
+	if randf() < 0.35 + (0.3 if player.arrows < 6 else 0.0):
+		drop(p, "arrows")
+	if randf() < 0.18 + (0.25 if player.bombs < 2 else 0.0):
+		drop(p, "bombs")
 
 
 func drop(p: Vector3, kind: String) -> void:
@@ -364,6 +362,12 @@ func collect(kind: String) -> void:
 	if kind == "heart":
 		player.heal(2)
 		sfx.play("heart")
+	elif kind == "arrows":
+		player.arrows = mini(player.arrows + 5, player.MAX_ARROWS)
+		sfx.play("shard", 0.8)
+	elif kind == "bombs":
+		player.bombs = mini(player.bombs + 2, player.MAX_BOMBS)
+		sfx.play("shard", 0.7)
 	else:
 		shards += 1
 		sfx.play("shard")

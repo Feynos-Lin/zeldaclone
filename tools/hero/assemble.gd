@@ -19,8 +19,9 @@ func _init():
 	var cf = f32(PRE + "_col.bin"); var col := PackedColorArray(); col.resize(cf.size() / 4)
 	for i in col.size(): col[i] = Color(cf[i*4], cf[i*4+1], cf[i*4+2], cf[i*4+3])
 	arrays[Mesh.ARRAY_COLOR] = col
-	arrays[Mesh.ARRAY_BONES] = FileAccess.get_file_as_bytes(H + PRE + "_bones.bin").to_int32_array()
-	arrays[Mesh.ARRAY_WEIGHTS] = f32(PRE + "_weights.bin")
+	if FileAccess.file_exists(H + PRE + "_bones.bin"):   # props have no skeleton
+		arrays[Mesh.ARRAY_BONES] = FileAccess.get_file_as_bytes(H + PRE + "_bones.bin").to_int32_array()
+		arrays[Mesh.ARRAY_WEIGHTS] = f32(PRE + "_weights.bin")
 	arrays[Mesh.ARRAY_INDEX] = FileAccess.get_file_as_bytes(H + PRE + "_idx.bin").to_int32_array()
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)

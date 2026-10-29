@@ -1,10 +1,16 @@
 extends CharacterBody3D
 ## The hero: camera-relative movement, 3-hit sword combo, charged spin attack,
 ## dodge roll with invincibility frames, jumping, a raised shield that blocks
-## blows from the front, and lock-on targeting.
+## blows from the front, a bow and bombs, and lock-on targeting.
 
 const B = preload("res://scripts/build.gd")
 const HeroSkin = preload("res://scripts/hero_skin.gd")
+const ArrowScript = preload("res://scripts/arrow.gd")
+const BombScript = preload("res://scripts/bomb.gd")
+const SWORD_MESH := "res://assets/items/sword_mesh.res"
+const BOW_MESH := "res://assets/items/bow_mesh.res"
+const MAX_ARROWS := 30
+const MAX_BOMBS := 10
 
 const SPEED := 5.5
 const ROLL_SPEED := 10.5
@@ -21,12 +27,21 @@ var parts := {}
 var sword_root: Node3D
 var shield_node: Node3D
 var skin = null     # HeroSkin when the sculpted model is present
-var blade_mat: StandardMaterial3D
+var blade_mat: Material      # StandardMaterial3D, or the sculpt ShaderMaterial for the modelled sword
+var items := ["bow", "bombs"]
+var item_idx := 0
+var arrows := 20
+var bombs := 6
+var bow_node: Node3D
+var nock_arrow: Node3D
+var held_bomb = null
+var aim_dir := Vector3(0, 0, -1)
+var draw := 0.0
 
 var max_hp := 6   # half-hearts: 6 = 3 hearts
 var hp := 6
 var facing := Vector3(0, 0, -1)
-var state := "move"   # move, attack, charge, roll, hurt, dead
+var state := "move"   # move, attack, charge, roll, aim, hurt, dead
 var state_time := 0.0
 var combo := 0
 var combo_queued := false
@@ -49,6 +64,8 @@ var land_dip := 0.0
 const REST_POSE := [Vector3(0.12, -1.0, -0.18), Vector3(0.12, -0.4, -1.0), 0.0, 0.35, Vector3.UP]
 const GUARD_POSE := [Vector3(0.22, -0.6, -0.78), Vector3(0.05, 0.3, -1.0), -0.12, 0.6, Vector3.UP]
 const CHARGE_POSE := [Vector3(0.85, -0.05, 0.45), Vector3(0.5, 0.1, 0.86), -0.6, 0.35, Vector3.UP]
+const AIM_POSE := [Vector3(0.75, 0.15, 0.55), Vector3(0, 0, -1), -0.55, 2.3, Vector3.UP]
+const HOLD_POSE := [Vector3(0.12, 1.0, -0.15), Vector3(0, 1, 0), 0.0, 0.55, Vector3.BACK]
 const SPIN_POSE := [Vector3(1.0, 0.05, -0.2), Vector3(1.0, 0.0, -0.1), 0.0, 0.1, Vector3.UP]
 # Each swing: wind-up, contact, follow-through.
 const SWINGS := [
@@ -155,11 +172,170 @@ func _ready() -> void:
 	if HeroSkin.available():
 		skin = HeroSkin.new()
 		skin.setup(model, parts)
-		attach_gear()
+	build_items()
+	attach_gear()
+
+
+## Swaps in the modelled sword and slings the bow across his back.
+func build_items() -> void:
+	if ResourceLoader.exists(SWORD_MESH):
+		for ch in sword_root.get_children():
+			ch.queue_free()
+		var sm: ArrayMesh = load(SWORD_MESH)
+		var mi := MeshInstance3D.new()
+		mi.mesh = sm
+		blade_mat = (sm.surface_get_material(0) as ShaderMaterial).duplicate()
+		mi.material_override = blade_mat
+		sword_root.add_child(mi)
+	bow_node = Node3D.new()
+	bow_node.name = "Bow"
+	model.add_child(bow_node)
+	if ResourceLoader.exists(BOW_MESH):
+		var bm := MeshInstance3D.new()
+		bm.mesh = load(BOW_MESH)
+		bow_node.add_child(bm)
+	nock_arrow = Node3D.new()
+	ArrowScript.make_mesh(nock_arrow)
+	nock_arrow.visible = false
+	add_child(nock_arrow)
+
+
+func set_blade_glow(f: float) -> void:
+	if blade_mat is ShaderMaterial:
+		(blade_mat as ShaderMaterial).set_shader_parameter("glow", f)
+	elif blade_mat is StandardMaterial3D:
+		(blade_mat as StandardMaterial3D).albedo_color = Color(0.82, 0.86, 0.92).lerp(Color(1.0, 0.95, 0.5), f)
+
+
+# ------------------------------------------------------------------ bow and bombs
+
+func item_name() -> String:
+	return items[item_idx]
+
+
+func item_count() -> int:
+	return arrows if item_name() == "bow" else bombs
+
+
+func use_item() -> void:
+	if held_bomb != null:
+		throw_bomb()
+		return
+	if item_name() == "bow":
+		if arrows <= 0:
+			main.hud.toast("Out of arrows.")
+			main.sfx.play("blip", 0.7)
+			return
+		state = "aim"
+		state_time = 0.0
+		draw = 0.0
+		shielding = false
+		aim_dir = facing
+		main.sfx.play("draw")
+	else:
+		if bombs <= 0:
+			main.hud.toast("Out of bombs.")
+			main.sfx.play("blip", 0.7)
+			return
+		bombs -= 1
+		held_bomb = BombScript.new()
+		held_bomb.main = main
+		main.world.add_child(held_bomb)
+		held_bomb.global_position = global_position + Vector3(0, 1.9, 0)
+		main.sfx.play("fuse")
+
+
+func state_aim(move_dir: Vector3, delta: float, frozen: bool) -> void:
+	velocity.x = move_dir.x * 1.6
+	velocity.z = move_dir.z * 1.6
+	if target != null and is_instance_valid(target):
+		face_target()
+	elif move_dir.length() > 0.1:
+		facing = facing.slerp(move_dir.normalized(), minf(1.0, 3.0 * delta)).normalized()
+	draw = minf(1.0, draw + delta * 2.0)
+	var from := global_position + Vector3(0, 1.25, 0)
+	var spd := lerpf(18.0, 34.0, draw)
+	if target != null and is_instance_valid(target):
+		var to_t: Vector3 = target.global_position + Vector3(0, 1.0, 0) - from
+		var tt := to_t.length() / spd
+		aim_dir = (to_t + Vector3(0, 4.5 * tt * tt, 0)).normalized()
+	else:
+		aim_dir = (facing + Vector3(0, 0.05, 0)).normalized()
+	if frozen or Input.is_action_just_pressed("attack"):
+		state = "move"
+		return
+	if not Input.is_action_pressed("item"):
+		if draw > 0.2:
+			fire_arrow(spd)
+		state = "move"
+		rest_pose()
+
+
+func fire_arrow(spd: float) -> void:
+	arrows -= 1
+	var a = ArrowScript.new()
+	a.main = main
+	a.vel = aim_dir * spd
+	a.damage = 2 if draw >= 1.0 else 1
+	main.world.add_child(a)
+	a.global_position = nock_arrow.global_position - aim_dir * 0.1
+	main.sfx.play("bowshot")
+	main.controls.rumble(0.2, 0.0, 0.08)
+
+
+func throw_bomb() -> void:
+	var b = held_bomb
+	held_bomb = null
+	var v := facing * 8.0 + Vector3.UP * 4.2 + Vector3(velocity.x, 0, velocity.z) * 0.5
+	b.throw(v)
+	main.sfx.play("swing", 0.8)
+
+
+func drop_bomb() -> void:
+	var b = held_bomb
+	held_bomb = null
+	b.throw(facing * 1.2 + Vector3.UP * 1.0)
+
+
+## Bow in the left hand while aiming (on his back otherwise), the arrow on the
+## string, and a lit bomb held over his head.
+func place_items() -> void:
+	var aiming := state == "aim"
+	sword_root.visible = not aiming and held_bomb == null
+	shield_node.visible = not aiming and held_bomb == null
+	nock_arrow.visible = aiming and arrows > 0
+	if aiming:
+		var hand: Vector3 = skin.hand_global("l") if skin != null else parts.forearm_l.global_transform * Vector3(0, -0.3, 0)
+		var bb := Basis.looking_at(aim_dir, Vector3.UP) * Basis(Vector3.FORWARD, 0.12)
+		bow_node.global_transform = Transform3D(bb, hand)
+		nock_arrow.global_transform = Transform3D(bb, hand + bb.z * (0.3 + 0.18 * draw) + bb.x * 0.02)
+	else:
+		# slung diagonally across his back, string outward
+		bow_node.transform = Transform3D(Basis(Vector3.UP, PI * 0.5) * Basis(Vector3.RIGHT, 0.55), Vector3(0.0, 1.0, 0.24))
+	if held_bomb != null:
+		var top: Vector3
+		if skin != null:
+			top = (skin.hand_global("l") + skin.hand_global("r")) * 0.5 + Vector3(0, 0.1, 0)
+		else:
+			top = global_position + Vector3(0, 1.95, 0)
+		held_bomb.global_position = top
 
 
 ## Shield arm, jump tuck and landing squash, layered over the main animation.
 func animate_extra(delta: float) -> void:
+	if state == "aim":
+		apply_pose(blend_pose(cur_pose, AIM_POSE, minf(1.0, 16.0 * delta)))
+		parts.arm_l.rotation = parts.arm_l.rotation.lerp(Vector3(1.5, 0.55, 0.0), minf(1.0, 16.0 * delta))
+		parts.forearm_l.rotation = parts.forearm_l.rotation.lerp(Vector3(0.05, 0.0, 0.0), minf(1.0, 16.0 * delta))
+		parts.forearm_r.rotation.x = 2.3 - draw * 0.25
+		parts.leg_l.rotation.x = lerpf(parts.leg_l.rotation.x, -0.2, minf(1.0, 10.0 * delta))
+		parts.leg_r.rotation.x = lerpf(parts.leg_r.rotation.x, 0.25, minf(1.0, 10.0 * delta))
+		parts.shin_l.rotation.x = lerpf(parts.shin_l.rotation.x, 0.0, minf(1.0, 10.0 * delta))
+		parts.shin_r.rotation.x = lerpf(parts.shin_r.rotation.x, -0.15, minf(1.0, 10.0 * delta))
+	elif held_bomb != null and state == "move":
+		apply_pose(blend_pose(cur_pose, HOLD_POSE, minf(1.0, 14.0 * delta)))
+		parts.arm_l.rotation = parts.arm_l.rotation.lerp(Vector3(2.75, 0.0, 0.3), minf(1.0, 14.0 * delta))
+		parts.forearm_l.rotation = parts.forearm_l.rotation.lerp(Vector3(0.55, 0.0, 0.0), minf(1.0, 14.0 * delta))
 	shield_amt = move_toward(shield_amt, 1.0 if shielding else 0.0, delta * 9.0)
 	var e := shield_amt * shield_amt * (3.0 - 2.0 * shield_amt)
 	if e > 0.0:
@@ -254,6 +430,8 @@ func _physics_process(delta: float) -> void:
 			state_charge(move_dir)
 		"roll":
 			state_roll()
+		"aim":
+			state_aim(move_dir, delta, frozen)
 		"hurt":
 			var k := 1.0 - clampf(state_time / 0.3, 0.0, 1.0)
 			velocity.x = knock.x * k
@@ -274,6 +452,7 @@ func _physics_process(delta: float) -> void:
 	animate_extra(delta)
 	attach_gear()
 	place_shield()
+	place_items()
 
 
 func cam_relative(v: Vector2) -> Vector3:
@@ -316,6 +495,8 @@ func update_target(frozen: bool) -> void:
 
 func state_move(move_dir: Vector3, frozen: bool) -> void:
 	shielding = not frozen and Input.is_action_pressed("shield")
+	if held_bomb != null:
+		shielding = false
 	var spd := SPEED * (0.8 if target != null else 1.0)
 	if shielding:
 		spd = SHIELD_SPEED
@@ -340,11 +521,22 @@ func state_move(move_dir: Vector3, frozen: bool) -> void:
 			was_on_floor = false
 			main.sfx.play("jump")
 		return
+	if Input.is_action_just_pressed("item_next") and held_bomb == null:
+		item_idx = (item_idx + 1) % items.size()
+		main.sfx.play("blip")
+	if Input.is_action_just_pressed("item"):
+		use_item()
+		return
+	if Input.is_action_just_pressed("attack") and held_bomb != null:
+		throw_bomb()
+		return
 	if Input.is_action_just_pressed("attack"):
 		shielding = false
 		start_attack(0, false)
 	elif Input.is_action_just_pressed("action") and not grounded:
 		pass   # no rolling in mid-air
+	elif Input.is_action_just_pressed("action") and held_bomb != null:
+		drop_bomb()
 	elif Input.is_action_just_pressed("action"):
 		var npc = main.nearest_npc(global_position, 2.6)
 		if npc != null and main.dialog_cooldown > 0.0:
@@ -370,7 +562,7 @@ func start_attack(c: int, is_spin: bool) -> void:
 	held_time = 0.0
 	from_pose = cur_pose
 	face_target()
-	blade_mat.albedo_color = Color(0.82, 0.86, 0.92)
+	set_blade_glow(0.0)
 	main.sfx.play("spin" if is_spin else "swing")
 
 
@@ -408,7 +600,7 @@ func state_charge(move_dir: Vector3) -> void:
 		facing = move_dir.normalized()
 	if state_time >= CHARGE_TIME:
 		var f := 0.5 + 0.5 * sin(state_time * 30.0)
-		blade_mat.albedo_color = Color(0.82, 0.86, 0.92).lerp(Color(1.0, 0.95, 0.5), f)
+		set_blade_glow(f)
 		if state_time - get_physics_process_delta_time() < CHARGE_TIME:
 			main.sfx.play("charged")
 	if not Input.is_action_pressed("attack"):
@@ -416,7 +608,7 @@ func state_charge(move_dir: Vector3) -> void:
 			start_attack(0, true)
 		else:
 			state = "move"
-			blade_mat.albedo_color = Color(0.82, 0.86, 0.92)
+			set_blade_glow(0.0)
 
 
 func start_roll(dir: Vector3) -> void:
@@ -489,6 +681,9 @@ func take_damage(amount: int, push_dir: Vector3) -> bool:
 		main.spawn_flash(shield_node.global_position)
 		return true
 	shielding = false
+	if held_bomb != null:
+		drop_bomb()
+	nock_arrow.visible = false
 	hp = maxi(hp - amount, 0)
 	invuln = 1.2
 	knock = push_dir.normalized() * 7.0
@@ -525,6 +720,11 @@ func respawn(pos: Vector3) -> void:
 	facing = Vector3(0, 0, 1)
 	parts.pivot.rotation.x = 0.0
 	parts.pivot.position.y = 0.85
+	if held_bomb != null:
+		held_bomb.queue_free()
+		held_bomb = null
+	arrows = maxi(arrows, 10)
+	bombs = maxi(bombs, 3)
 	rest_pose()
 
 

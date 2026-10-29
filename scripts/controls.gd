@@ -40,8 +40,10 @@ const PAD_LAYOUT := {
 	"attack": ["x", "b"],
 	"action": ["a"],
 	"jump": ["y"],
-	"shield": ["rightshoulder", "righttrigger+"],
-	"target": ["lefttrigger+", "leftshoulder"],
+	"shield": ["righttrigger+"],
+	"item": ["rightshoulder"],
+	"item_next": ["leftshoulder"],
+	"target": ["lefttrigger+"],
 	"recenter": ["rightstick"],
 	"pause": ["start", "back"],
 }
@@ -52,8 +54,8 @@ const WIZARD_STEPS := [
 	["b", "Press the RIGHT face button\n(B on Xbox, Circle on PlayStation)\nSword · Back"],
 	["x", "Press the LEFT face button\n(X on Xbox, Square on PlayStation)\nSword"],
 	["y", "Press the TOP face button\n(Y on Xbox, Triangle on PlayStation)\nJump"],
-	["leftshoulder", "Press the LEFT BUMPER\n(LB / L1)\nLock on"],
-	["rightshoulder", "Press the RIGHT BUMPER\n(RB / R1)\nShield"],
+	["leftshoulder", "Press the LEFT BUMPER\n(LB / L1)\nChange item"],
+	["rightshoulder", "Press the RIGHT BUMPER\n(RB / R1)\nUse item (bow / bomb)"],
 	["lefttrigger", "Pull the LEFT TRIGGER\n(LT / L2)\nLock on"],
 	["righttrigger", "Pull the RIGHT TRIGGER\n(RT / R2)\nShield"],
 	["start", "Press START / OPTIONS\nPause"],
@@ -114,6 +116,8 @@ func setup_keyboard() -> void:
 		"action": [KEY_SHIFT, KEY_K, KEY_ENTER],
 		"jump": [KEY_SPACE],
 		"shield": [KEY_L, KEY_CTRL],
+		"item": [KEY_I],
+		"item_next": [KEY_O],
 		"target": [KEY_TAB],
 		"recenter": [KEY_C],
 		"pause": [KEY_ESCAPE, KEY_P],
@@ -126,7 +130,7 @@ func setup_keyboard() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(action, e)
-	for pair in [["attack", MOUSE_BUTTON_LEFT], ["shield", MOUSE_BUTTON_RIGHT], ["target", MOUSE_BUTTON_MIDDLE]]:
+	for pair in [["attack", MOUSE_BUTTON_LEFT], ["shield", MOUSE_BUTTON_RIGHT], ["target", MOUSE_BUTTON_MIDDLE], ["item_next", MOUSE_BUTTON_WHEEL_UP], ["item_next", MOUSE_BUTTON_WHEEL_DOWN]]:
 		var m := InputEventMouseButton.new()
 		m.button_index = pair[1]
 		InputMap.action_add_event(pair[0], m)
@@ -289,11 +293,11 @@ func confirm_name() -> String:
 func hint_text() -> String:
 	match last_device:
 		"gamepad":
-			return "Left stick: move · %s/%s: sword (hold to spin) · %s: roll / talk · %s: jump · %s: shield · %s: lock on · Right stick: camera · %s: recenter · %s: pause" % [
-				button_name("x"), button_name("b"), button_name("a"), button_name("y"), button_name("rightshoulder"), button_name("lefttrigger"), button_name("rightstick"), button_name("start")]
+			return "Left stick: move · %s/%s: sword · %s: roll / talk · %s: jump · %s: shield · %s: use item (hold to aim) · %s: change item · %s: lock on · %s: pause" % [
+				button_name("x"), button_name("b"), button_name("a"), button_name("y"), button_name("righttrigger"), button_name("rightshoulder"), button_name("leftshoulder"), button_name("lefttrigger"), button_name("start")]
 		"touch":
-			return "Stick: move · B: sword (hold to spin) · A: roll / talk · J: jump · R: hold shield · Z: lock on · drag right side: camera"
-	return "WASD move · J / click: sword (hold to spin) · Space: jump / talk · Shift: roll · L / right-click: shield · Tab: lock on · Q/E R/F: camera · C: recenter · Esc: pause"
+			return "Stick: move · B: sword · A: roll / talk · J: jump · R: shield · I: bow / bomb (hold to aim) · +: change item · Z: lock on"
+	return "WASD move · J / click: sword · Space: jump / talk · Shift: roll · L / right-click: shield · I: bow / bomb (hold to aim) · O / wheel: change item · Tab: lock on · Q/E R/F: camera · Esc: pause"
 
 
 func rumble(weak: float, strong: float, duration: float) -> void:

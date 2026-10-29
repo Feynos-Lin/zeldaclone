@@ -18,6 +18,8 @@ var buttons := {
 	"target": {"label": "Z", "color": Color(0.85, 0.75, 0.3), "r": 14.0},
 	"jump": {"label": "J", "color": Color(0.55, 0.4, 0.8), "r": 14.0},
 	"shield": {"label": "R", "color": Color(0.6, 0.6, 0.65), "r": 15.0},
+	"item": {"label": "I", "color": Color(0.8, 0.45, 0.25), "r": 15.0},
+	"item_next": {"label": "+", "color": Color(0.5, 0.5, 0.5), "r": 9.0},
 }
 
 
@@ -49,6 +51,10 @@ func button_center(action: String) -> Vector2:
 			return Vector2(w - 138, h - 44)
 		"shield":
 			return Vector2(w - 40, h - 108)
+		"item":
+			return Vector2(w - 82, h - 124)
+		"item_next":
+			return Vector2(w - 108, h - 140)
 	return Vector2.ZERO
 
 

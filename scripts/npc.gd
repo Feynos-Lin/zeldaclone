@@ -18,6 +18,8 @@ var sculpt = null          # SculptRig for characters with a sculpted model
 var stomp_t := -1.0        # time into the current spear stamp, < 0 when idle
 var dip := 0.0
 var arm_up_axis := Vector3.RIGHT
+var anim := ""             # guard, elder or kid, for sculpted villagers
+var talk_t := 0.0
 
 
 func _ready() -> void:
@@ -35,7 +37,9 @@ func _ready() -> void:
 		cs.position.y = 0.85
 		sculpt = SculptRig.new()
 		sculpt.setup(model, colors.sculpt)
-		_prepare_stamp()
+		anim = colors.get("anim", "guard")
+		if anim == "guard":
+			_prepare_stamp()
 		B.blob_shadow(self, 0.45)
 		add_child(cs)
 		model.rotation.y = base_yaw
@@ -146,6 +150,49 @@ func _animate_sculpt(delta: float) -> void:
 		desired = B.yaw_of(Vector3(to.x, 0, to.z))
 	model.rotation.y = lerp_angle(model.rotation.y, desired, 4.0 * delta)
 	var talking: bool = main.dialog_active and main.dialog_npc == self
+	talk_t = talk_t + delta if talking else 0.0
+	match anim:
+		"elder":
+			_animate_elder(talking)
+		"kid":
+			_animate_kid(talking)
+		_:
+			_animate_guard(talking, delta)
+
+
+## Grandmother: slow breathing and a gentle sway; while talking she nods along
+## and lifts her right hand, palm up, as she makes her point.
+func _animate_elder(talking: bool) -> void:
+	var breathe := sin(t * 1.4) * 0.005
+	var nod := sin(talk_t * 3.2) * 0.07 if talking else 0.0
+	var gesture := (0.5 + 0.5 * sin(talk_t * 1.6 - 1.2)) if talking else 0.0
+	gesture = gesture * gesture
+	sculpt.apply({
+		"body": Transform3D(Basis(Vector3.FORWARD, sin(t * 0.6) * 0.02) * Basis(Vector3.RIGHT, -0.03), Vector3(0, breathe, 0)),
+		"head": Transform3D(Basis.from_euler(Vector3(sin(t * 0.5) * 0.04 + nod - 0.04, sin(t * 0.3) * 0.1, sin(t * 0.45) * 0.04)), Vector3.ZERO),
+		"arm_r": Transform3D(Basis(Vector3.RIGHT, 0.55 * gesture) * Basis(Vector3.BACK, 0.12 * gesture), Vector3.ZERO),
+		"forearm_r": Transform3D(Basis(Vector3.RIGHT, 0.75 * gesture), Vector3.ZERO),
+		"arm_l": Transform3D(Basis(Vector3.RIGHT, sin(t * 1.4) * 0.02), Vector3.ZERO),
+	})
+
+
+## Pip: never quite still, rocking on his heels and swinging his arms; talking to
+## the hero he bounces and waves.
+func _animate_kid(talking: bool) -> void:
+	var bounce := absf(sin(t * (5.0 if talking else 2.2))) * (0.025 if talking else 0.008)
+	var swing := sin(t * 2.2) * 0.12
+	var wave_up := clampf(talk_t * 3.0, 0.0, 1.0) if talking else 0.0
+	var wave := sin(talk_t * 9.0) * 0.35 * wave_up
+	sculpt.apply({
+		"body": Transform3D(Basis(Vector3.RIGHT, sin(t * 2.2) * 0.03), Vector3(0, bounce, 0)),
+		"head": Transform3D(Basis.from_euler(Vector3(sin(t * 1.1) * 0.05, sin(t * 0.7) * 0.15, sin(t * 1.7) * 0.06)), Vector3.ZERO),
+		"arm_r": Transform3D(Basis(Vector3.BACK, (0.15 + swing * 0.5) * (1.0 - wave_up) + 2.5 * wave_up), Vector3.ZERO),
+		"forearm_r": Transform3D(Basis(Vector3.BACK, wave), Vector3.ZERO),
+		"arm_l": Transform3D(Basis(Vector3.FORWARD, 0.15 - swing * 0.5) * Basis(Vector3.RIGHT, swing), Vector3.ZERO),
+	})
+
+
+func _animate_guard(talking: bool, delta: float) -> void:
 	# Spear stamp while talking: lift (0.4 s), hold, drive it down, rest.
 	var lift := 0.0
 	if talking and stomp_t < 0.0:

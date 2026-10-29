@@ -1,11 +1,12 @@
 extends Control
-## Hearts, shard count, clock, lock-on letterbox, dialog box, title card, game over.
+## Hearts, shard count, current item and ammo, clock, lock-on letterbox, dialog box, title card, game over.
 
 var main
 var bars := 0.0
 var bars_target := 0.0
 var clock_label: Label
 var shard_label: Label
+var item_label: Label
 var title: Label
 var subtitle: Label
 var over_title: Label
@@ -28,6 +29,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clock_label = make_label(self, 10, HORIZONTAL_ALIGNMENT_RIGHT)
 	shard_label = make_label(self, 10)
+	item_label = make_label(self, 10)
 	title = make_label(self, 30, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_color_override("font_color", Color(0.93, 0.9, 0.8))
 	title.add_theme_constant_override("outline_size", 6)
@@ -132,6 +134,10 @@ func _process(delta: float) -> void:
 	shard_label.position = Vector2(22, 24)
 	shard_label.size = Vector2(80, 14)
 	shard_label.text = "× %d" % main.shards
+	item_label.position = Vector2(26, 40)
+	item_label.size = Vector2(90, 14)
+	var pl = main.player
+	item_label.text = "%s × %d" % ["Bow" if pl.item_name() == "bow" else "Bombs", pl.item_count()]
 
 	var title_a := clampf(5.0 - title_time, 0.0, 1.0) * clampf(title_time * 1.5, 0.0, 1.0)
 	title.position = Vector2(0, h * 0.28)
@@ -200,6 +206,21 @@ func _draw() -> void:
 	var s := Vector2(14, 31)
 	draw_colored_polygon(PackedVector2Array([s + Vector2(0, -6), s + Vector2(4, 0), s + Vector2(0, 6), s + Vector2(-4, 0)]), Color.BLACK)
 	draw_colored_polygon(PackedVector2Array([s + Vector2(0, -4.5), s + Vector2(2.8, 0), s + Vector2(0, 4.5), s + Vector2(-2.8, 0)]), Color(0.93, 0.9, 0.78))
+	draw_item_icon(Vector2(15, 47), p.item_name())
+
+
+func draw_item_icon(c: Vector2, kind: String) -> void:
+	draw_circle(c, 8.0, Color(0, 0, 0, 0.55))
+	draw_arc(c, 8.0, 0, TAU, 20, Color(0.93, 0.9, 0.78, 0.8), 1.0)
+	if kind == "bow":
+		draw_arc(c + Vector2(-2.5, 0), 5.5, -1.2, 1.2, 10, Color(0.75, 0.55, 0.32), 1.6)
+		draw_line(c + Vector2(-2.5, 0) + Vector2(cos(-1.2), sin(-1.2)) * 5.5, c + Vector2(-2.5, 0) + Vector2(cos(1.2), sin(1.2)) * 5.5, Color(0.9, 0.88, 0.8), 0.7)
+		draw_line(c + Vector2(-4, 0), c + Vector2(5, 0), Color(0.85, 0.85, 0.88), 0.9)
+	else:
+		draw_circle(c + Vector2(0, 1), 4.2, Color(0.1, 0.1, 0.12))
+		draw_circle(c + Vector2(-1.3, -0.3), 1.0, Color(0.5, 0.5, 0.55))
+		draw_line(c + Vector2(2, -2.5), c + Vector2(3.5, -5), Color(0.8, 0.65, 0.4), 1.0)
+		draw_circle(c + Vector2(3.8, -5.4), 1.0, Color(1.0, 0.75, 0.3))
 
 
 func draw_heart(c: Vector2, r: float, col: Color, half: bool) -> void:
