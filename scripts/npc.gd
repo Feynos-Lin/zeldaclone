@@ -100,6 +100,16 @@ func _ready() -> void:
 			B.mesh(body, B.box_mesh(Vector3(0.26, 0.5, 0.02)), Vector3(0, 0.88, -0.118), B.paint_mat(colors.apron, "cloth", 35))
 		if kid:
 			model.scale = Vector3.ONE * 0.68
+		if colors.get("sick", false):
+			# lying in bed, face up, head on the pillow
+			parts.pivot.rotation.x = PI * 0.5
+			parts.pivot.position = Vector3(0, 0.74, 0.0)
+			parts.arm_l.rotation.z = -0.12
+			parts.arm_r.rotation.z = 0.12
+			B.merge_children(model)
+			model.rotation.y = base_yaw
+			t = randf() * 10.0
+			return
 		B.blob_shadow(self, 0.4)
 	add_child(cs)
 	B.merge_children(model)
@@ -126,6 +136,9 @@ func _process(delta: float) -> void:
 	t += delta
 	if sculpt != null:
 		_animate_sculpt(delta)
+		return
+	if colors.get("sick", false):
+		_animate_sick(delta)
 		return
 	var p = main.player
 	var d: float = global_position.distance_to(p.global_position)
@@ -248,3 +261,21 @@ func _stamp_impact() -> void:
 	tw.tween_property(puff, "scale", Vector3(3.2, 0.5, 3.2), 0.45)
 	tw.tween_property(m, "albedo_color:a", 0.0, 0.45)
 	tw.chain().tween_callback(puff.queue_free)
+
+
+## Wenna, feverish in bed: shallow breathing and a cough every few seconds,
+## then lifting her head to look at the hero while they talk.
+var cough_t := 3.0
+func _animate_sick(delta: float) -> void:
+	var talking: bool = main.dialog_active and main.dialog_npc == self
+	cough_t -= delta
+	var lift := 0.0
+	if cough_t < 0.5:
+		lift = sin(clampf(cough_t / 0.5, 0.0, 1.0) * PI) * 0.35
+	if cough_t <= 0.0:
+		cough_t = randf_range(4.0, 7.0) if main.quest_state < 3 else randf_range(14.0, 20.0)
+		if global_position.distance_to(main.player.global_position) < 9.0:
+			main.sfx.play_at("cough", global_position + Vector3(0, 0.8, 0))
+	parts.body.position.y = parts.body_y + sin(t * 2.6) * 0.008
+	parts.head.rotation.x = -lift - (0.35 if talking else 0.0)
+	parts.head.rotation.y = sin(t * 0.4) * 0.15

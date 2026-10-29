@@ -28,6 +28,21 @@ func _ready() -> void:
 			a.scale = Vector3.ONE * 0.8
 			gfx.add_child(a)
 			ArrowScript.make_mesh(a)
+	elif kind == "satchel":
+		# brown leather bag with a flap and a strap mended in red, glinting so it can be found
+		var leather := B.paint_mat(Color(0.45, 0.3, 0.18), "leather", 41)
+		var bag := B.mesh(gfx, B.sphere(1.0, 10, 6), Vector3.ZERO, leather)
+		bag.scale = Vector3(0.24, 0.18, 0.13)
+		B.mesh(gfx, B.box_mesh(Vector3(0.36, 0.14, 0.04)), Vector3(0, 0.08, 0.11), leather, Vector3(-20, 0, 0))
+		B.mesh(gfx, B.cyl(0.015, 0.015, 0.5, 5), Vector3(0, 0.22, 0), B.paint_mat(Color(0.7, 0.18, 0.15), "cloth"), Vector3(0, 0, 90))
+		B.mesh(gfx, B.sphere(0.05, 6, 3), Vector3(0.12, 0.25, 0.05), B.glow(Color(1.0, 0.95, 0.6)))
+		var glint := OmniLight3D.new()
+		glint.light_color = Color(1.0, 0.9, 0.6)
+		glint.light_energy = 1.2
+		glint.omni_range = 3.0
+		glint.position = Vector3(0, 0.4, 0)
+		gfx.add_child(glint)
+		life = INF
 	elif kind == "bombs":
 		var dark := B.mat(Color(0.12, 0.12, 0.14))
 		B.mesh(gfx, B.sphere(0.14, 10, 6), Vector3.ZERO, dark)
@@ -38,7 +53,7 @@ func _ready() -> void:
 		B.mesh(gfx, B.prism(Vector3(0.2, 0.42, 0.1)), Vector3(0, 0, 0), bone)
 		B.mesh(gfx, B.prism(Vector3(0.2, 0.3, 0.1)), Vector3(0, -0.3, 0), bone, Vector3(0, 0, 180))
 	B.blob_shadow(self, 0.18)
-	vel = Vector3(randf_range(-1.5, 1.5), 4.0, randf_range(-1.5, 1.5))
+	vel = Vector3.ZERO if kind == "satchel" else Vector3(randf_range(-1.5, 1.5), 4.0, randf_range(-1.5, 1.5))
 
 
 func _process(delta: float) -> void:

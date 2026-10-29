@@ -11,6 +11,8 @@ const CameraRigScript = preload("res://scripts/camera_rig.gd")
 const HudScript = preload("res://scripts/hud.gd")
 const TouchScript = preload("res://scripts/touch_controls.gd")
 const SfxScript = preload("res://scripts/sfx.gd")
+const MusicScript = preload("res://scripts/music.gd")
+const InteriorsScript = preload("res://scripts/interiors.gd")
 const WorldScript = preload("res://scripts/world.gd")
 const ControlsScript = preload("res://scripts/controls.gd")
 const PauseScript = preload("res://scripts/pause_menu.gd")
@@ -44,6 +46,12 @@ var cam_rig
 var hud
 var touch
 var sfx
+var music
+var interiors
+var transition_active := false
+var doors: Array = []        # filled by the world builder: one entry per cottage door
+var quest_state := 0         # Wenna's satchel: 0 not started, 1 looking, 2 found it, 3 returned
+var pending_reward := false
 var env: Environment
 var sun: DirectionalLight3D
 var fill: DirectionalLight3D
@@ -74,6 +82,8 @@ func _ready() -> void:
 	add_child(controls)
 	sfx = SfxScript.new()
 	add_child(sfx)
+	music = MusicScript.new()
+	add_child(music)
 	world = Node3D.new()
 	add_child(world)
 	build_environment()
@@ -124,6 +134,11 @@ func _ready() -> void:
 	graphics.main = self
 	add_child(graphics)
 	graphics.apply_display()
+	interiors = InteriorsScript.new()
+	interiors.main = self
+	add_child(interiors)
+	interiors.build(doors)
+	spawn_satchel()
 	hud.set_hint(controls.hint_text())
 	controls.device_changed.connect(func(_kind): hud.set_hint(controls.hint_text()))
 	controls.message.connect(func(text): hud.toast(text))
@@ -309,6 +324,69 @@ func nearest_npc(p: Vector3, radius: float):
 	return best
 
 
+# ------------------------------------------------------------------ side quest: Wenna's satchel
+
+const SATCHEL_SPOT := Vector3(2.5, 0, 101.0)   # by the graves in front of Hollow Cave
+
+
+func spawn_satchel() -> void:
+	var pk = PickupScript.new()
+	pk.main = self
+	pk.kind = "satchel"
+	pk.position = SATCHEL_SPOT
+	world.add_child(pk)
+
+
+func wenna_lines() -> Array:
+	match quest_state:
+		0:
+			quest_state = 1
+			return [
+				"*cough* ...Oh. A visitor. Forgive me, I can barely lift my head.",
+				"I was gathering feverfew by the old graves when they came crawling out of Hollow Cave. Dozens of them.",
+				"I ran. I didn't stop running until I reached the ward-stones... and somewhere back there I dropped my satchel.",
+				"My medicine is in it. A little green bottle, wrapped in cloth. Without it this fever will only get worse.",
+				"It must still be lying out by the graves near the cave mouth. Please... if you're going out there anyway...",
+			]
+		1:
+			return [
+				"*cough cough* ...The satchel. Brown leather, with a strap mended in red.",
+				"By the graves in front of Hollow Cave. Be careful. They gather there after dark.",
+			]
+		2:
+			pending_reward = true
+			quest_state = 3
+			return [
+				"Is that... my satchel? You actually went out there for it?",
+				"*sip* ...Oh, that's bitter. That's how you know it works.",
+				"I can already breathe easier. I'll be on my feet in a day or two.",
+				"Here. My grandmother sewed this charm. She said it gives the heart a little more room. I think you need it more than I do.",
+			]
+	return [
+		"Look at me, sitting up already. That medicine is a wonder.",
+		"When I'm well I'll go back for the feverfew. In daylight. With you, maybe.",
+	]
+
+
+func quest_text() -> String:
+	match quest_state:
+		1:
+			return "Find Wenna's satchel by the graves near Hollow Cave"
+		2:
+			return "Bring the satchel back to Wenna"
+	return ""
+
+
+func give_wenna_reward() -> void:
+	pending_reward = false
+	player.max_hp += 2
+	player.hp = player.max_hp
+	player.arrows = mini(player.arrows + 10, player.MAX_ARROWS)
+	sfx.play("heart")
+	sfx.play("charged")
+	hud.toast("Heart charm! Your hearts grew by one.")
+
+
 func start_dialog(npc) -> void:
 	dialog_active = true
 	dialog_npc = npc
@@ -317,6 +395,8 @@ func start_dialog(npc) -> void:
 		dialog_lines.append("You've got %d shard%s on you. Keep them coming." % [shards, "" if shards == 1 else "s"])
 	if npc.npc_name == "Pip" and shards > 0:
 		dialog_lines = ["Whoa! Is that a real bone shard?!", "...I'm gonna pretend I didn't see that. Mom would freak."]
+	if npc.npc_name == "Wenna":
+		dialog_lines = wenna_lines()
 	dialog_index = 0
 	dialog_frame = Engine.get_process_frames()
 	hud.show_dialog(npc.npc_name, dialog_lines[0])
@@ -331,6 +411,10 @@ func advance_dialog() -> void:
 		dialog_active = false
 		dialog_npc = null
 		dialog_cooldown = 0.4
+		if pending_reward:
+			give_wenna_reward()
+		elif quest_state == 1 and dialog_lines.size() == 5:
+			hud.toast("Side quest: Wenna's Satchel")
 		hud.hide_dialog()
 	else:
 		hud.show_dialog(hud.name_label.text, dialog_lines[dialog_index])
@@ -362,6 +446,10 @@ func collect(kind: String) -> void:
 	if kind == "heart":
 		player.heal(2)
 		sfx.play("heart")
+	elif kind == "satchel":
+		quest_state = 2
+		sfx.play("heart")
+		hud.toast("You found Wenna's satchel! There's a little green bottle inside.")
 	elif kind == "arrows":
 		player.arrows = mini(player.arrows + 5, player.MAX_ARROWS)
 		sfx.play("shard", 0.8)
@@ -405,6 +493,8 @@ func respawn() -> void:
 		if Vector2(z.global_position.x, z.global_position.z).length() < 45.0:
 			z.queue_free()
 	player.respawn(TOWN_SPAWN)
+	interiors.inside = -1
+	music.indoors = false
 	cam_rig.yaw = PI
 	cam_rig.snap()
 

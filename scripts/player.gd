@@ -413,7 +413,7 @@ func _physics_process(delta: float) -> void:
 		air_time += delta
 	was_on_floor = on_floor
 
-	var frozen: bool = main.dialog_active or main.game_over_active
+	var frozen: bool = main.dialog_active or main.game_over_active or main.transition_active
 	var input_vec := Vector2.ZERO
 	if not frozen:
 		input_vec = Input.get_vector("move_left", "move_right", "move_forward", "move_back")

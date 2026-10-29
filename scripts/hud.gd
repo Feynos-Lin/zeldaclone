@@ -7,6 +7,7 @@ var bars_target := 0.0
 var clock_label: Label
 var shard_label: Label
 var item_label: Label
+var quest_label: Label
 var title: Label
 var subtitle: Label
 var over_title: Label
@@ -30,6 +31,8 @@ func _ready() -> void:
 	clock_label = make_label(self, 10, HORIZONTAL_ALIGNMENT_RIGHT)
 	shard_label = make_label(self, 10)
 	item_label = make_label(self, 10)
+	quest_label = make_label(self, 9)
+	quest_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
 	title = make_label(self, 30, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_color_override("font_color", Color(0.93, 0.9, 0.8))
 	title.add_theme_constant_override("outline_size", 6)
@@ -138,6 +141,10 @@ func _process(delta: float) -> void:
 	item_label.size = Vector2(90, 14)
 	var pl = main.player
 	item_label.text = "%s × %d" % ["Bow" if pl.item_name() == "bow" else "Bombs", pl.item_count()]
+	var qt: String = main.quest_text()
+	quest_label.text = ("Quest: " + qt) if qt != "" else ""
+	quest_label.position = Vector2(8, 56)
+	quest_label.size = Vector2(minf(w * 0.5, 240), 14)
 
 	var title_a := clampf(5.0 - title_time, 0.0, 1.0) * clampf(title_time * 1.5, 0.0, 1.0)
 	title.position = Vector2(0, h * 0.28)

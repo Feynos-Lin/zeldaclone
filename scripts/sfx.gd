@@ -34,6 +34,8 @@ func _ready() -> void:
 	streams["bowshot"] = make(gen_twang())
 	streams["draw"] = make(gen_swing(0.3, 0.06, 0.14))
 	streams["fuse"] = make(gen_hiss(0.45))
+	streams["cough"] = make(gen_cough())
+	streams["door"] = make(gen_door())
 	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.volume_db = -6.0
@@ -169,6 +171,46 @@ func gen_hiss(dur: float) -> PackedFloat32Array:
 		prev = v
 		var crackle := 1.0 if randf() < 0.02 else 0.3
 		out[i] = hp * 0.22 * crackle * sin(t * PI)
+	return out
+
+
+## A dry cough: two short throaty bursts.
+func gen_cough() -> PackedFloat32Array:
+	var n := int(RATE * 0.7)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var lp := 0.0
+	var bp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var e := 0.0
+		for st in [0.0, 0.32]:
+			var u: float = t - float(st)
+			if u > 0.0 and u < 0.22:
+				e += sin(u / 0.22 * PI) * exp(-u * 8.0) * (1.0 if st == 0.0 else 0.7)
+		lp += (randf_range(-1.0, 1.0) - lp) * 0.35
+		bp += (lp - bp) * 0.15
+		out[i] = (lp - bp) * e * 1.6 + sin(TAU * 150.0 * t) * e * 0.15
+	return out
+
+
+## Wooden door: a short creak then a soft thud.
+func gen_door() -> PackedFloat32Array:
+	var n := int(RATE * 0.55)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phase := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var creak := 0.0
+		if t < 0.35:
+			phase += (420.0 + 180.0 * sin(t * 23.0)) / RATE
+			creak = (fmod(phase, 1.0) * 2.0 - 1.0) * sin(t / 0.35 * PI) * 0.12 * (0.6 + 0.4 * sin(t * 140.0))
+		var thud := 0.0
+		if t > 0.38:
+			var u := t - 0.38
+			thud = sin(TAU * 90.0 * u) * exp(-u * 25.0) * 0.6
+		out[i] = creak + thud
 	return out
 
 

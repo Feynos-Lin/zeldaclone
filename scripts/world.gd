@@ -450,7 +450,8 @@ func build_cottage(p: Vector3, w: float, d: float, h: float, plaster_col: Color)
 	var roof := B.mesh(root, B.prism(Vector3(d + 1.6, 2.3, w + 1.2)), Vector3(0, h + 1.05, 0), thatch)
 	roof.rotation.y = PI * 0.5
 	B.mesh(root, B.cyl(0.2, 0.2, w + 1.2, 7), Vector3(0, h + 2.18, 0), thatch.duplicate(), Vector3(0, 0, 90))
-	# Door with an arched top
+	# Door with an arched top; every cottage can be entered (see interiors.gd)
+	main.doors.append({"pos": root.transform * Vector3(0, 0, d * 0.5 + 0.5), "out": root.basis.z.normalized(), "plaster": plaster_col})
 	B.mesh(root, B.box_mesh(Vector3(1.1, 1.75, 0.12)), Vector3(0, 0.875 + 0.05, d * 0.5 + 0.05), beam)
 	B.mesh(root, B.cyl(0.55, 0.55, 0.12, 10), Vector3(0, 1.8, d * 0.5 + 0.05), beam, Vector3(90, 0, 0))
 	B.mesh(root, B.sphere(0.05, 6, 3), Vector3(0.35, 1.0, d * 0.5 + 0.13), B.paint_mat(Color(0.6, 0.55, 0.4), "metal"))

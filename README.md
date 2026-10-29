@@ -37,6 +37,7 @@ Press Start or Esc for the pause menu, then use left and right on an option to c
 - **Resolution (desktop):** Native, or 1280x720 to 2560x1440 (16:9), 1280x800 to 1920x1200 (16:10), 1024x768 to 1920x1440 (4:3), 1280x1024 (5:4), 2560x1080 and 3440x1440 (21:9). In fullscreen a ratio that doesn't match your monitor gets black bars, and sizes above your screen are rendered sharper and scaled down.
 - **Resolution (Android):** the 3D render resolution: 480p, 720p (default), 1080p, 1440p or Native.
 - **Display (desktop):** Windowed or Fullscreen (F11 also toggles it).
+- **Music:** Off, Low, Medium (default) or High.
 
 Settings are saved on the device.
 
@@ -54,12 +55,15 @@ If a controller isn't recognized or its buttons come out wrong, open the pause m
 - Hold the shield up to sidestep and block blows from the front; blocked zombies reel back
 - Bow and arrows (a full draw hits twice as hard) and bombs that bounce, roll and blow up after a few seconds; zombies drop arrow bundles and bombs
 - Grandmother Ysel nods and gestures as she talks, and Pip bounces and waves
+- Every cottage can be entered: walk into its door for a furnished room with a fire going
+- Side quest: Wenna lies sick in one of the cottages. She lost her satchel, with her medicine in it, fleeing the cave; find it by the graves outside Hollow Cave and bring it back for a heart charm (one more heart)
+- An eerie forest theme on a loop, muffled when you're indoors
 - Old Brannoc, the gate guard, stamps his spear while he talks to you
 - Hearts, bone shards and heart drops, death and respawn
 - Day/night clock (one in-game hour every 20 seconds); nights spawn more zombies and a big pale moon rises
 - Hand-painted look: soft per-pixel lighting, real sun shadows, sky, bloom and film-style grading
 - Pause menu settings: Graphics (Low / Medium / High), Resolution (up to 1440p in 16:9, 16:10, 4:3, 5:4 and 21:9 on desktop; render resolution on Android) and Windowed / Fullscreen
-- The hero, the villagers, the gate guard, the sword, bow and bombs are sculpted models painted from their art; the rest (world, zombies, sounds) is generated in code
+- The hero, the villagers, the gate guard, the sword, bow and bombs are sculpted models painted from their art; the rest (world, zombies, sounds) is generated in code, and the music is rendered by `tools/music/make_music.py`
 
 ## Project layout
 

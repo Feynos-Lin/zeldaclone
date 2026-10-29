@@ -63,7 +63,7 @@ func _process(delta: float) -> void:
 			choose(selected)
 		elif Input.is_action_just_pressed("move_left"):
 			choose(selected, -1)
-		elif Input.is_action_just_pressed("move_right") and items[selected] in ["Graphics", "Resolution", "Display"]:
+		elif Input.is_action_just_pressed("move_right") and items[selected] in ["Graphics", "Resolution", "Display", "Music"]:
 			choose(selected, 1)
 	queue_redraw()
 
@@ -72,6 +72,7 @@ func build_items() -> void:
 	items = ["Resume", "Graphics", "Resolution"]
 	if not main.graphics.mobile:
 		items.append("Display")
+	items.append("Music")
 	items.append_array(["Controller setup", "Reset controller mapping", "Quit game"])
 
 
@@ -83,6 +84,8 @@ func item_label(i: int) -> String:
 			return "Resolution:  < %s >" % main.graphics.resolution_name()
 		"Display":
 			return "Display:  < %s >" % main.graphics.display_name()
+		"Music":
+			return "Music:  < %s >" % main.music.level_name()
 	return items[i]
 
 
@@ -116,7 +119,7 @@ func pad_device() -> int:
 
 
 func choose(i: int, dir: int = 1) -> void:
-	if dir < 0 and not items[i] in ["Graphics", "Resolution", "Display"]:
+	if dir < 0 and not items[i] in ["Graphics", "Resolution", "Display", "Music"]:
 		return
 	main.sfx.play("shard")
 	match items[i]:
@@ -128,6 +131,8 @@ func choose(i: int, dir: int = 1) -> void:
 			main.graphics.cycle_resolution(dir)
 		"Display":
 			main.graphics.toggle_fullscreen()
+		"Music":
+			main.music.cycle(dir)
 
 		"Controller setup":
 			var d := pad_device()
